@@ -1,6 +1,6 @@
 {
   "name": "onca",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Onca for your AI client: its launch tools (connections, scheduling, results) and free launch videos made on your own Mac: the Onca method (hook, info, closure; five concepts; the founder picks), real UI rendered to 9:16 video, a local video editor and local narration.",
   "author": {
     "name": "Onca",
@@ -14,6 +14,9 @@
     "displayName": "Onca",
     "shortDescription": "Onca's launch tools and free launch videos from your product's real UI",
     "developerName": "Onca",
-    "category": "Creativity"
+    "category": "Creativity",
+    "brandColor": "#C45A3C",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png"
   }
 }
