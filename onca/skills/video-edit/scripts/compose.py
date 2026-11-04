@@ -10,7 +10,7 @@ import html
 import json
 
 STYLES = {
-    # canvas -> caption band. Portrait stays inside TikTok's safe zone (x 120-940, y 220-1440).
+    # canvas -> caption band. Portrait stays inside TikTok's safe zone (x 120-940, y 220-1440) and Instagram's feed crop (y 285-1635): y 285-1440.
     "portrait": {"left": 120, "width": 820, "top": 1150, "height": 270, "max_px": 92, "min_px": 58},
     "landscape": {"left": 160, "width": 1600, "top": 850, "height": 150, "max_px": 84, "min_px": 52},
 }

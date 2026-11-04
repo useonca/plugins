@@ -57,6 +57,8 @@ def main() -> None:
         band["height"] = a.band_height
     if h > w and band["top"] + band["height"] > 1440 * h / 1920:
         shell.log("warning: the caption band runs below y 1440, under TikTok's buttons and description")
+    if h > w and band["top"] < 285 * h / 1920:
+        shell.log("warning: the caption band starts above y 285, where Instagram's home feed cuts a 9:16 video")
     max_chars = 26 if h > w else 34  # portrait may wrap to two lines
     groups = core.caption_groups(edl["words_out"], max_words=a.max_words, max_chars=max_chars)
     duration = round(info["duration"], 3)

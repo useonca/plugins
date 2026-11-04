@@ -19,7 +19,7 @@ Everything renders locally and costs nothing. The engine is HyperFrames (HTML re
 Every video Onca's method makes meets this unless the founder asks otherwise:
 
 - 1080 x 1920 (9:16), 30 fps, H.264 `yuv420p` with `+faststart`, AAC 48 kHz, loudness about -16 LUFS integrated with true peak at or under -1 dBFS. A 16:9 cut is 1920 x 1080.
-- Words and key UI inside the safe box x 120 to 940, y 220 to 1440 (portrait). UI text 34 px or more on screen.
+- Words and key UI inside the safe box x 120 to 940, y 220 to 1440 (portrait); for Instagram also inside y 285 to 1635, the middle 4:5 its home feed shows (not verified: Instagram publishes no numbers for it, size guides report it; check a real post before a paid ad). UI text 34 px or more on screen.
 - One change at a time: only one text element changes at any moment, and every headline gets its read time.
 - A first frame that works as the thumbnail, the logo at the end, no copyrighted music.
 

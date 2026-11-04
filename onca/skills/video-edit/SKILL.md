@@ -83,7 +83,7 @@ python3 $S/captions.py edit/edl.json --video edit/cut-16x9.mp4 --out edit/final-
 ```
 
 - One phrase at a time (up to 4 words, broken at punctuation and pauses, no lone trailing word), the spoken word lit in the accent colour, Montserrat Black 58-92 px with a stroke and a dark box behind the words.
-- Portrait captions stay inside TikTok's safe zone (x 120-940, y 220-1440). Pick the band from the contact sheet: below the speaker's face, off text already in the picture. The script warns when the band runs below y 1440.
+- Portrait captions stay inside TikTok's safe zone (x 120-940, y 220-1440) and, for Instagram, inside the middle 4:5 its home feed shows (y 285-1635; not verified: Instagram publishes no numbers for it, size guides report it), so y 285-1440. Pick the band from the contact sheet: below the speaker's face, off text already in the picture. The script warns when the band runs below y 1440 or starts above y 285.
 - It writes a HyperFrames project (`<out>-hf/`), runs `check` (its `check.json`; the `film_silent` warning is expected: the video renders muted and its sound is copied back afterwards so loudness stays as measured), renders, and muxes the audio.
 - To restyle, edit `compose.py` or the `-hf` project with this plugin's `hyperframes` skill.
 

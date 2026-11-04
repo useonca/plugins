@@ -23,7 +23,7 @@ The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain 
 4. **Five concepts on five different mechanisms**, never five versions of one idea. Each: name and one-line premise; hook (what is on screen, what the viewer feels, which question it opens); info; closure (how the question is answered, last frame); why it works; production route (free motion design, or the paid shot it would need, described and not generated); risk. Rank them.
 5. **The founder picks**: one, a pair with the most different hooks to A/B, or all.
 6. **Build every pick at the same time**, one project folder per concept, all from one shared brief (`references/build-rules.md`). Write each composition with the `hyperframes` skill and render it with `video-render`.
-7. **Self-review** each video on its 14-frame contact sheet (`video-render`'s step 4): small type, text outside the safe box, two changes at once, a claim the product cannot back. Fix, render again. Check the length against the read time.
+7. **Self-review** each video on its 14-frame contact sheet (`video-render`'s step 4): small type, text outside the safe box (for Instagram, the middle 4:5: y 285 to 1635; not verified, Instagram publishes no numbers for its feed crop, so check a real post before a paid ad), two changes at once, a claim the product cannot back. Fix, render again. Check the length against the read time.
 8. **The founder watches every video with sound on** and picks the winner (you cannot hear the mix: say so). Fix weak spots in the winner only.
 
 ## Save and post
