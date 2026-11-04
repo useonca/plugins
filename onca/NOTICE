@@ -1,0 +1,15 @@
+Onca plugin
+Copyright (c) 2026 Onca
+
+This plugin includes third-party files that keep their own licences:
+
+HyperFrames by HeyGen, version 0.8.222
+  Source: https://github.com/heygen-com/hyperframes
+  Licence: Apache License 2.0, full text in LICENSES/hyperframes-Apache-2.0.txt
+  Files: skills/hyperframes/ and skills/hyperframes-cli/, copied unmodified from HyperFrames' own skills
+  (its *.test.mjs files left out); every copied file and its sha256 are listed in skills/video-render/ENGINE.json.
+  HyperFrames' own repository ships no NOTICE file.
+
+The render engine itself is not bundled: skills/video-render/scripts/engine runs `npx hyperframes@0.8.222`, which
+the founder's own npm downloads from the npm registry under HyperFrames' licence. Models used for transcription
+and narration are downloaded by the founder's own tools from their publishers and are not redistributed here.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "onca": {
+      "type": "http",
+      "url": "https://mcp.useonca.com/mcp"
+    }
+  }
+}

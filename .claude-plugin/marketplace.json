@@ -1,0 +1,15 @@
+{
+  "name": "onca",
+  "description": "The Onca plugin for Claude Code, Codex and Claude Desktop: Onca's launch tools plus launch work that runs on the founder's own Mac.",
+  "owner": {
+    "name": "Onca",
+    "url": "https://useonca.com"
+  },
+  "plugins": [
+    {
+      "name": "onca",
+      "source": "./onca",
+      "description": "Onca for your AI client: its launch tools (connections, scheduling, results) and free launch videos made on your own Mac: the Onca method (hook, info, closure; five concepts; the founder picks), real UI rendered to 9:16 video, a local video editor and local narration."
+    }
+  ]
+}

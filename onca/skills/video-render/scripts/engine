@@ -1,0 +1,12 @@
+#!/bin/sh
+# Run the pinned render engine (HyperFrames, see ../ENGINE.json): `sh engine <command> [args]`, e.g.
+# `sh engine check --json`. It puts a Node 22+ first on PATH when one is installed and runs npx with the pin,
+# so the version never floats. Never run cloud render, publish or anything that spends through it.
+DIR=$(cd "$(dirname "$0")" && pwd)
+PIN=$(python3 "$DIR/pin.py") || exit 1
+NODE=$(python3 "$DIR/doctor.py" node22)
+if [ -n "$NODE" ]; then
+  PATH="$(dirname "$NODE"):$PATH"
+  export PATH
+fi
+exec npx --yes "hyperframes@$PIN" "$@"
