@@ -12,6 +12,8 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 
 ## Install
 
+If an Onca server is already signed in (the plugin's onca or the claude.ai connector claude_ai_onca), use it and do not sign in again.
+
 Claude Code:
 
 ```bash
