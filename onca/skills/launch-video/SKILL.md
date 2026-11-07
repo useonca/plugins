@@ -5,7 +5,7 @@ description: Onca's method for a product launch, ad or social video, made free o
 
 # Launch video
 
-The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain a software product with its real UI, at no generation cost. It works for any product. Rendering is the `video-render` skill's job, editing a recording is `video-edit`'s and narration is `voice`'s; paths are from this skill's folder (the folder this SKILL.md is in): run each as that folder's absolute path plus the path, because commands run from the video's own folder.
+The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain a software product with its real UI, at no generation cost. It works for any product. Rendering is the `video-render` skill's job, editing a recording is `video-edit`'s and narration is `voice`'s; carousels and still images are `carousel-render`'s; paths are from this skill's folder (the folder this SKILL.md is in): run each as that folder's absolute path plus the path, because commands run from the video's own folder.
 
 ## Step 0: is this plugin current?
 
