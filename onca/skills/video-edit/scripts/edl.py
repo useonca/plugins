@@ -29,12 +29,19 @@ def main() -> None:
     ap.add_argument("--pad-after", type=float, default=0.09)
     ap.add_argument("--max-pause", type=float, default=0.4)
     ap.add_argument("--tight-pause", type=float, default=0.15)
+    ap.add_argument("--no-settle", action="store_true", help="keep the edges from the word times alone")
     a = ap.parse_args()
     info = shell.probe(a.src)
     words = json.loads(Path(a.words).read_text())
     plan = json.loads(Path(a.plan).read_text())
     settings = {k: getattr(a, k) for k in ("pad_before", "pad_after", "max_pause", "tight_pause")}
     ranges = core.build_ranges(words, plan["keep"], fps=info["fps"], duration=info["duration"], **settings)
+    if info["has_audio"] and not a.no_settle:  # the word times can be a syllable off: cut in the quiet beside them
+        lv = shell.levels(a.src)
+        settled = core.settle_edges(ranges, words, lv, core.quiet_floor(lv), fps=info["fps"])
+        moved = sum((x["start"], x["end"]) != (y["start"], y["end"]) for x, y in zip(ranges, settled)) if len(settled) == len(ranges) else len(ranges)
+        shell.log(f"edges settled into quiet: {moved} of {len(ranges)} ranges moved, {len(ranges) - len(settled)} joined")
+        ranges = settled
     by_i = {w["i"]: w for w in words}
     for r in ranges:
         r["text"] = " ".join(by_i[i]["text"] for i in r["words"])

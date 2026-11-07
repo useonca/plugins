@@ -6,8 +6,10 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 
 - `launch-video`: the method, from facts to the posted video (start here).
 - `video-render`: the render contract and the local, pinned render engine.
-- `video-edit`: cut a raw recording into a tight captioned short.
+- `video-edit`: Onca's local editor: map a raw recording, cut it fast, clean the voice, and lay in cutaways, picture-in-picture, music and captions from one timeline.
 - `voice`: free local narration (Apple Silicon).
+- `screen-demo` (Onca production kit): product footage made from your product's own source or a headless recording, polished with auto zoom and a smooth cursor, and long chaptered YouTube demos with captions. You never record or stage anything.
+- `b-roll` (Onca production kit): moving shots from still photos (Onca's parallax or a pan and zoom) and code-made depth scenes, and where to cut them in.
 - `hyperframes`, `hyperframes-cli`: the render engine's own skills (HyperFrames, Apache 2.0, see NOTICE).
 
 ## Install

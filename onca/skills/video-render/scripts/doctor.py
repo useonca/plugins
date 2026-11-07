@@ -26,8 +26,8 @@ from typing import Callable, Mapping, Optional
 
 SEMVER = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 SKILL_DIR = Path(__file__).resolve().parent.parent
-TOOLS = ("ffmpeg", "ffprobe", "uv", "parakeet-mlx", "scenedetect", "mlx_audio.tts.generate")
-OPTIONAL = {"mlx_audio.tts.generate": "only for the voice skill"}
+TOOLS = ("ffmpeg", "ffprobe", "uv", "parakeet-mlx", "scenedetect", "mlx_audio.tts.generate", "demucs-mlx")
+OPTIONAL = {"mlx_audio.tts.generate": "only for the voice skill", "demucs-mlx": "only for voice separation"}
 INSTALL = {
     "node22": "brew install node@22",
     "ffmpeg": "brew install ffmpeg",
@@ -36,6 +36,7 @@ INSTALL = {
     "parakeet-mlx": "uv tool install parakeet-mlx",
     "scenedetect": "uv tool install scenedetect",
     "mlx_audio.tts.generate": "uv tool install mlx-audio",
+    "demucs-mlx": "uv tool install demucs-mlx",
 }
 NODE_MIN = 22
 

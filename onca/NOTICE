@@ -13,3 +13,14 @@ HyperFrames by HeyGen, version 0.8.222
 The render engine itself is not bundled: skills/video-render/scripts/engine runs `npx hyperframes@0.8.222`, which
 the founder's own npm downloads from the npm registry under HyperFrames' licence. Models used for transcription
 and narration are downloaded by the founder's own tools from their publishers and are not redistributed here.
+
+Credits for tools and ideas the video-edit skill uses but does not bundle:
+
+- Demucs (Meta, MIT licence) and its Apple Silicon port demucs-mlx (MIT): the optional voice separation, installed
+  by the founder with `uv tool install demucs-mlx`; its model weights are downloaded by that tool.
+- parakeet-tdt-0.6b-v3 (NVIDIA, CC-BY-4.0, https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), run through
+  parakeet-mlx: the word-timed transcript. The transcript is a working file, never shipped in a video.
+- video-use (browser-use, MIT, https://github.com/browser-use/video-use): the ideas of a packed, text-first
+  transcript for planning, word-boundary cuts with short padding, short fades at every cut, and output-timeline
+  offsets for captions.
+- FFmpeg (LGPL / GPL, installed by the founder) does every cut, mix and encode.

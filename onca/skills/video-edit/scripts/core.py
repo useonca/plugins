@@ -4,9 +4,9 @@ Every function takes and returns plain values so the cut logic is tested with
 lists of dicts. The shell scripts next to this file do the ffmpeg / parakeet
 work and call into here.
 
-Ideas borrowed from browser-use/video-use (MIT, github.com/browser-use/video-use):
-word-boundary cuts with 30-200 ms padding, short fades at every segment edge,
-and output-timeline offsets for captions (output = word - range start + range offset).
+The cut follows word boundaries with 30-200 ms padding, short fades at every
+segment edge, and output-timeline offsets for captions
+(output = word - range start + range offset). Credits are in the plugin's NOTICE.
 """
 
 from __future__ import annotations
@@ -202,7 +202,144 @@ def parse_freezes(log: str) -> list[dict]:
     return out
 
 
+def parse_blacks(log: str) -> list[dict]:
+    """blackdetect stderr -> [{"start", "end", "dur"}]."""
+    out = []
+    for m in re.finditer(r"black_start:\s*([\d.]+)\s+black_end:\s*([\d.]+)\s+black_duration:\s*([\d.]+)", log):
+        out.append({"start": round(float(m.group(1)), 3), "end": round(float(m.group(2)), 3), "dur": round(float(m.group(3)), 3)})
+    return out
+
+
+def parse_change_times(log: str) -> list[float]:
+    """`select='gt(scene,X)',showinfo` stderr -> the times the picture changed."""
+    return [round(float(t), 3) for t in re.findall(r"\bpts_time:\s*([\d.]+)", log)]
+
+
+def still_stretches(change_times: list[float], duration: float, max_still: float = 3.0,
+                    speech: list | None = None, max_still_speech: float = 12.0) -> list[dict]:
+    """Stretches with no change in the picture: a viewer leaves. Over max_still, unless
+    someone speaks through most of it (`speech`: (start, end) spans): a talking face holds up to max_still_speech."""
+    points = [0.0] + sorted(t for t in change_times if 0 <= t <= duration) + [duration]
+    out = []
+    for a, b in zip(points, points[1:]):
+        spoken = sum(max(0.0, min(b, e) - max(a, s)) for s, e in speech or [])
+        limit = max_still_speech if b > a and spoken / (b - a) >= 0.5 else max_still
+        if b - a > limit:
+            out.append({"start": round(a, 3), "end": round(b, 3), "dur": round(b - a, 3)})
+    return out
+
+
+# ---------------------------------------------------------------- cut edges in quiet
+
+LEVEL_HOP = 0.01  # seconds per level frame
+
+
+def levels_db(samples, rate: int, hop: float = LEVEL_HOP) -> list[float]:
+    """The level (dBFS) of each `hop` of 16-bit mono samples."""
+    n = max(1, int(round(rate * hop)))
+    out = []
+    for k in range(0, len(samples) - n + 1, n):
+        ms = sum(x * x for x in samples[k:k + n]) / n
+        out.append(10 * math.log10(ms / 32768 ** 2) if ms > 0 else -120.0)
+    return out
+
+
+def quiet_floor(levels: list[float], below_speech: float = 30.0, over_noise: float = 6.0) -> float:
+    """The level under which a frame counts as quiet: 30 dB under speech, but never under the room's noise."""
+    if not levels:
+        return -60.0
+    s = sorted(levels)
+    return max(s[int(0.75 * (len(s) - 1))] - below_speech, s[int(0.10 * (len(s) - 1))] + over_noise)
+
+
+def clip_floor(levels: list[float], below_speech: float = 15.0) -> float:
+    """The level over which sound at a cut is a word cut off (within 15 dB of speech); quieter is a tail the
+    edge fade covers."""
+    if not levels:
+        return -30.0
+    s = sorted(levels)
+    return s[int(0.75 * (len(s) - 1))] - below_speech
+
+
+def _loud(levels: list[float], t: float, floor: float, hop: float) -> bool:
+    k = int(t / hop + 1e-6)
+    return 0 <= k < len(levels) and levels[k] > floor
+
+
+def settle_edges(ranges: list[dict], words: list[dict], levels: list[float], floor: float, *, fps: float,
+                 hop: float = LEVEL_HOP, pad: float = 0.03, tail: float = 0.06, reach: float = 0.5) -> list[dict]:
+    """Move every range edge that sits in sound out to the quiet beside it, plus `pad` before a word and `tail`
+    after one (a word's decay, which a cleaned voice brings up out of the room noise): a word's start or end
+    from the recognizer can be off by a syllable, so a cut placed from the times alone can clip it. An edge
+    never passes the neighbouring word's time nor `reach`; edges that meet join their ranges."""
+    ends = sorted(w["end"] for w in words)
+    starts = sorted(w["start"] for w in words)
+    out = []
+    for r in ranges:
+        s, e = r["start"], r["end"]
+        lo = max([x for x in ends if x <= s + 1e-6] + [s - reach, 0.0])
+        t = s
+        while t - hop >= lo and _loud(levels, t, floor, hop):
+            t -= hop
+        if t < s:
+            s = max(math.ceil(lo * fps - 1e-6) / fps, math.floor((t - pad) * fps) / fps)  # on a frame, never before lo
+        hi = min([x for x in starts if x >= e - 1e-6] + [e + reach])
+        t = e
+        while t + hop <= hi and _loud(levels, t - hop, floor, hop):
+            t += hop
+        if t > e:
+            e = min(math.floor(hi * fps + 1e-6) / fps, math.ceil((t + tail) * fps) / fps)
+        out.append(dict(r, start=round(s, 4), end=round(e, 4)))
+    return join_ranges(out, fps)
+
+
+def cut_edges(main: list[dict]) -> list[dict]:
+    """Every edge of a main track where the sound is cut ({"at" on the output, "src", "t" in it, "side"});
+    a clip that carries straight on from the one before (same source, out == in) is no cut."""
+    edges, at = [], 0.0
+    for k, c in enumerate(main):
+        a, b = float(c["in"]), float(c["out"])
+        prev, nxt = main[k - 1] if k else None, main[k + 1] if k + 1 < len(main) else None
+        if not (prev and prev["src"] == c["src"] and abs(float(prev["out"]) - a) < 1e-3):
+            edges.append({"at": round(at, 3), "src": c["src"], "t": a, "side": "in"})
+        at += b - a
+        if not (nxt and nxt["src"] == c["src"] and abs(float(nxt["in"]) - b) < 1e-3):
+            edges.append({"at": round(at, 3), "src": c["src"], "t": b, "side": "out"})
+    return edges
+
+
+def loud_edges(edges: list[dict], levels: dict, floors: dict, hop: float = LEVEL_HOP, probe: float = 0.02) -> list[dict]:
+    """The edges with sound in the `probe` seconds just inside the cut: a word clipped there (`levels` and
+    `floors` per source)."""
+    out = []
+    for x in edges:
+        lv, floor = levels.get(x["src"]), floors.get(x["src"])
+        if lv is None:
+            continue
+        a = x["t"] if x["side"] == "in" else x["t"] - probe
+        loud = [lv[k] for k in range(int(a / hop + 1e-6), int((a + probe) / hop - 1e-6) + 1) if 0 <= k < len(lv)]
+        if loud and max(loud) > floor:
+            out.append(dict(x, over_db=round(max(loud) - floor, 1)))
+    return out
+
+
 # ---------------------------------------------------------------- packed transcript
+
+
+def phrases(words: list[dict], break_gap: float = 0.5) -> list[list[dict]]:
+    """Words split into phrases wherever the gap between two words is break_gap or more."""
+    out: list[list[dict]] = []
+    for w in words:
+        if out and w["start"] - out[-1][-1]["end"] < break_gap:
+            out[-1].append(w)
+        else:
+            out.append([w])
+    return out
+
+
+def phrase_text(phrase: list[dict]) -> str:
+    """A phrase's words, hard fillers wrapped in {braces} so they stand out."""
+    return " ".join("{" + w["text"] + "}" if is_hard_filler(w["text"]) else w["text"] for w in phrase)
 
 
 def pack_lines(words: list[dict], silences: list[dict] | None = None, break_gap: float = 0.5) -> list[str]:
@@ -211,20 +348,13 @@ def pack_lines(words: list[dict], silences: list[dict] | None = None, break_gap:
     Hard fillers are wrapped in {braces} so they stand out. This is what Claude
     reads to plan the cut: word indices make the plan exact.
     """
-    lines, phrase = [], []
-
-    def flush():
-        if phrase:
-            text = " ".join("{" + w["text"] + "}" if is_hard_filler(w["text"]) else w["text"] for w in phrase)
-            lines.append(f"[{phrase[0]['start']:07.2f}-{phrase[-1]['end']:07.2f}] #{phrase[0]['i']}-#{phrase[-1]['i']} {text}")
-
-    for k, w in enumerate(words):
-        if phrase and w["start"] - phrase[-1]["end"] >= break_gap:
-            flush()
-            lines.append(f"    ... pause {w['start'] - phrase[-1]['end']:.2f} s")
-            phrase = []
-        phrase.append(w)
-    flush()
+    lines: list[str] = []
+    prev = None
+    for ph in phrases(words, break_gap):
+        if prev is not None:
+            lines.append(f"    ... pause {ph[0]['start'] - prev[-1]['end']:.2f} s")
+        lines.append(f"[{ph[0]['start']:07.2f}-{ph[-1]['end']:07.2f}] #{ph[0]['i']}-#{ph[-1]['i']} {phrase_text(ph)}")
+        prev = ph
     return lines
 
 
@@ -254,6 +384,35 @@ def repeated_runs(words: list[dict], min_len: int = 4) -> list[dict]:
 
 
 # ---------------------------------------------------------------- EDL
+
+
+def uneven_frames(pts: list[float], fps: float) -> bool:
+    """True when frame times leave the 1/fps grid (a phone drops frames in low light, though its rates agree):
+    more than one gap over half a frame off."""
+    t = sorted(pts)
+    step = 1 / fps
+    return sum(abs((b - a) - step) > step / 2 for a, b in zip(t, t[1:])) > 1
+
+
+def variable_rate(r_rate: str | None, avg_rate: str | None) -> bool:
+    """True when the stream's own rate and its average disagree by over 1%: frames are not on one grid, so a
+    cut that counts frames from the rate (the fast cut) would drift."""
+    return stream_fps(r_rate, avg_rate) != stream_fps(r_rate, r_rate)
+
+
+def stream_fps(r_rate: str | None, avg_rate: str | None) -> float:
+    """A video's frame rate: the stream's own rate (29.97 for 30000/1001) when the average agrees within 1%
+    (a file joined or looped from pieces averages a little off), else the average (variable frame rate)."""
+    def val(text):
+        try:
+            n, m = str(text).split("/")
+            return int(n) / int(m) if int(m) else None
+        except (ValueError, AttributeError):
+            return None
+    r, avg = val(r_rate), val(avg_rate)
+    if r and (not avg or abs(r - avg) / r <= 0.01) and r <= 240:
+        return round(r, 3)
+    return round(avg, 3) if avg else 30.0
 
 
 def snap(t: float, fps: float) -> float:
@@ -310,9 +469,14 @@ def build_ranges(
             cur["end"] = min(cur["end"], duration)
         ranges.append(cur)
 
+    return join_ranges([dict(r, start=snap(r["start"], fps), end=snap(r["end"], fps)) for r in ranges], fps)
+
+
+def join_ranges(ranges: list[dict], fps: float) -> list[dict]:
+    """Ranges in play order with ranges that touch merged, and each one's place on the output clock."""
     out: list[dict] = []
     for r in ranges:
-        r = dict(r, start=snap(r["start"], fps), end=snap(r["end"], fps))
+        r = dict(r, words=list(r.get("words", [])))
         if r["end"] <= r["start"]:
             r["end"] = round(r["start"] + 1 / fps, 4)
         if out and r["start"] <= out[-1]["end"] + 1e-6:
@@ -539,26 +703,6 @@ def reframe_filter(src_w: int, src_h: int, dst_w: int, dst_h: int, focus_x: floa
     )
 
 
-def cut_graph(ranges: list[dict], fade: float = 0.025, has_audio: bool = True) -> str:
-    """filter_complex that trims every kept range and joins them.
-
-    Each audio piece gets a short fade in and out, so a cut never clicks; the
-    pieces butt-join, so the output timeline is exactly the sum of the ranges
-    (the captions depend on that).
-    """
-    parts, labels = [], []
-    for k, r in enumerate(ranges):
-        d = round(r["end"] - r["start"], 4)
-        parts.append(f"[0:v]trim=start={r['start']}:end={r['end']},setpts=PTS-STARTPTS[v{k}]")
-        labels.append(f"[v{k}]")
-        if has_audio:
-            f = min(fade, d / 4)
-            parts.append(f"[0:a]atrim=start={r['start']}:end={r['end']},asetpts=PTS-STARTPTS,"
-                         f"afade=t=in:st=0:d={f},afade=t=out:st={round(d - f, 4)}:d={f}[a{k}]")
-            labels.append(f"[a{k}]")
-    n = len(ranges)
-    parts.append("".join(labels) + f"concat=n={n}:v=1:a={1 if has_audio else 0}" + ("[v][a]" if has_audio else "[v]"))
-    return ";".join(parts)
 
 
 def parse_loudnorm(log: str) -> dict:
@@ -575,6 +719,17 @@ def loudnorm_apply(m: dict, target: float = -16.0, tp: float = -1.5, lra: float 
     """Second loudnorm pass from the first pass's measurement (linear when possible)."""
     return (f"loudnorm=I={target}:TP={tp}:LRA={lra}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
             f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
+
+
+def gain_filter(m: dict, target: float = -16.0, tp: float = -1.5) -> str:
+    """Loudness to `target` from an ebur128 measurement ({"I", "TP"}): one gain, then a peak limiter 0.5 dB under
+    `tp` so the true peak stays under it. What loudnorm's linear mode does, without its 192 kHz pass (a tenth of
+    the time on a long mix)."""
+    if m.get("I") is None:
+        raise ValueError("no loudness measured (silent input?)")
+    gain = round(target - m["I"], 2)
+    limit = round(10 ** ((tp - 0.5) / 20), 4)
+    return f"volume={gain}dB,alimiter=limit={limit}:level=false:attack=5:release=50:asc=1:latency=1"  # latency: no lookahead delay
 
 
 def parse_sizes(spec: str) -> list[tuple[int, int, str]]:

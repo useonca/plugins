@@ -11,7 +11,7 @@ Everything renders locally and costs nothing. The engine is HyperFrames (HTML re
 
 - `ENGINE` below is the absolute path of this skill's `scripts/engine` (this skill's folder plus `/scripts/engine`). Run it from inside the video's project folder, which is where the engine looks for `index.html`: `cd <project> && sh "$ENGINE" <command> [args]`. Wherever the `hyperframes` or `hyperframes-cli` skill says `npx hyperframes <command>`, use `sh "$ENGINE" <command>` instead: it runs exactly the pinned version and puts a Node 22+ first on PATH.
 - Never run the engine's `cloud` commands, `lambda`, `cloudrun`, `publish`, `render --cloud` or anything else that uploads, spends or needs an account. A render here is always local. Skip the engine's `usage` step (it reports a cloud plan, which a local render does not use).
-- Before the first video of a session: `python3 scripts/doctor.py check`. Each missing item prints its install command (`brew install node@22`, `brew install ffmpeg`, `brew install uv`, `uv tool install parakeet-mlx`, `uv tool install scenedetect`, `uv tool install mlx-audio`). Show the founder what is missing and the commands, and run them only after their yes. `mlx_audio.tts.generate` is only needed for narration (the `voice` skill).
+- Before the first video of a session: `python3 scripts/doctor.py check`. Each missing item prints its install command (`brew install node@22`, `brew install ffmpeg`, `brew install uv`, `uv tool install parakeet-mlx`, `uv tool install scenedetect`, `uv tool install mlx-audio`, `uv tool install demucs-mlx`). Show the founder what is missing and the commands, and run them only after their yes. `mlx_audio.tts.generate` is only needed for narration (the `voice` skill), `demucs-mlx` only for voice separation (`video-edit`'s `audio.py separate`).
 - Before every render: `sh "$ENGINE" check --json` in the project folder; fix every error and weigh every warning.
 
 ## The render contract
@@ -33,11 +33,18 @@ Every video Onca's method makes meets this unless the founder asks otherwise:
    ```
    A silent video: drop the `-af ... -b:a 192k` part and add `-an`.
 3. Check it: `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,pix_fmt,r_frame_rate -of json <name>.mp4` must say `h264`, the size, `yuv420p` and `30/1`.
-4. Look at it: a contact sheet of 14 evenly spaced frames (`D` is the length in seconds from `ffprobe -show_entries format=duration`):
-   ```bash
-   ffmpeg -y -i <name>.mp4 -vf "fps=14/D,scale=270:-2,tile=7x2:padding=6:margin=6" -frames:v 1 <name>-contact.png
-   ```
-   Open the PNG and look for type under 34 px, text outside the safe box, two things changing at once, a black or frozen frame, a claim the product cannot back. Fix and render again.
+4. Review it, every time, before it is saved to the library, posted or shown to the founder:
+   - The engine's review pass, in the project folder: `sh "$ENGINE" snapshot --review`, then `../hyperframes/references/review.md`: describe each beat frame as a stranger would, list every P0 and P1, and write `REVIEW.md`.
+   - A contact sheet of 14 evenly spaced frames (`D` is the length in seconds from `ffprobe -show_entries format=duration`):
+     ```bash
+     ffmpeg -y -i <name>.mp4 -vf "fps=14/D,scale=270:-2,tile=7x2:padding=6:margin=6" -frames:v 1 <name>-contact.png
+     ```
+   - The professional-look checklist on those frames: nothing important under captions or overlays (a form field, a button, a number, the product's name, a face); UI text readable at the target size (34 px or more on screen) and inside the safe box; a visible change every few seconds, never 3 s of nothing; the hero element large, not a thin strip; a designed end card (the product name and what to do next); beautiful type: the brand kit's fonts (else an open-licence pairing that fits the tone, never a default system font or Arial) really loaded, balanced title lines with no word alone on the last line, tight tracking and leading on big type, curly quotes, one type scale across cards; a fallback font or an orphan word on a title or caption card is a P0; the product's real trigger, its keyboard shortcut when it has one, never an invented click (read the product's source to find it); no black or frozen frame; no claim the product cannot back; no default that looks generated (`../hyperframes/references/motion.md`).
+   - Fix every P0 and render again; nothing goes to `library_upload`, a post or the founder with a P0 open. Real footage edited by `video-edit` gets the same review through its `verify.py`.
+
+## Encoding
+
+Encode with the Mac's hardware encoder when ffmpeg lists it (`ffmpeg -hide_banner -encoders | grep h264_videotoolbox`): `-c:v h264_videotoolbox -q:v 70 -profile:v high -pix_fmt yuv420p` in place of `-c:v libx264 -preset slow -crf 18`; it runs a few times faster at the same look. Run one render at a time: the Mac has one media engine, so two at once take twice as long. `video-edit`'s `speed.py` measures this Mac.
 
 ## Hard lines
 

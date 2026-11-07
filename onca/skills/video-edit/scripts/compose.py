@@ -14,11 +14,18 @@ STYLES = {
     "portrait": {"left": 120, "width": 820, "top": 1150, "height": 270, "max_px": 92, "min_px": 58},
     "landscape": {"left": 160, "width": 1600, "top": 850, "height": 150, "max_px": 84, "min_px": 52},
 }
+# The caption font, Montserrat Black (OFL), from Google Fonts; never a system fallback.
+FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=block">'
+FONT_CHECK = '900 60px "Montserrat"'
 CHAR_EM = 0.66  # rough average glyph width of Montserrat Black, in em
 
 
 def layout_for(width: int, height: int) -> dict:
-    return STYLES["portrait" if height > width else "landscape"]
+    """The caption band for a frame: the style for its shape (set for 1080x1920 and 1920x1080), scaled to it."""
+    base = STYLES["portrait" if height > width else "landscape"]
+    sx, sy = (width / 1080, height / 1920) if height > width else (width / 1920, height / 1080)
+    return {"left": round(base["left"] * sx), "width": round(base["width"] * sx), "top": round(base["top"] * sy),
+            "height": round(base["height"] * sy), "max_px": base["max_px"] * min(sx, sy), "min_px": base["min_px"] * min(sx, sy)}
 
 
 def font_px(text: str, band: dict) -> int:
@@ -35,12 +42,18 @@ SCRIM = ("background: rgba(17,17,17,0.78); padding: 0.1em 0.38em; border-radius:
          "-webkit-box-decoration-break: clone; box-decoration-break: clone;")
 
 
+def caption_look(scrim: bool = True) -> str:
+    """The declarations of a caption line (`.cap-in`), shared by the scene and the caption cards."""
+    return ('font-family: "Montserrat"; font-weight: 900; line-height: 1.12; color: #FFFFFF; letter-spacing: -0.01em; '
+            "text-wrap: balance; -webkit-text-stroke: 0.1em #111111; paint-order: stroke fill; "
+            "text-shadow: 0 0.06em 0.18em rgba(0,0,0,0.55); " + (SCRIM if scrim else ""))
+
+
 def captions_html(groups: list[dict], width: int, height: int, duration: float, accent: str = "#FFC93C",
                   band: dict | None = None, scrim: bool = True) -> str:
     """The captions scene. The scrim (a dark box sized to the text) keeps captions
     readable over busy footage or text already in the picture."""
     band = band or layout_for(width, height)
-    scrim_css = SCRIM if scrim else ""
     rows, tweens = [], []
     for g, group in enumerate(groups):
         size = font_px(group["text"], band)
@@ -61,10 +74,7 @@ def captions_html(groups: list[dict], width: int, height: int, duration: float, 
     #root {{ position: absolute; inset: 0; }}
     .cap {{ position: absolute; left: {band['left']}px; top: {band['top']}px; width: {band['width']}px; height: {band['height']}px;
             display: flex; align-items: center; justify-content: center; text-align: center; overflow: visible; }}
-    .cap-in {{ font-family: "Montserrat", sans-serif; font-weight: 900; line-height: 1.12; color: #FFFFFF;
-              -webkit-text-stroke: 0.1em #111111; paint-order: stroke fill;
-              text-shadow: 0 0.06em 0.18em rgba(0,0,0,0.55);
-              {scrim_css} }}
+    .cap-in {{ {caption_look(scrim)} }}
     .w {{ color: #FFFFFF; }}
   </style>
   <div id="root" data-composition-id="captions" data-width="{width}" data-height="{height}" data-duration="{duration}">
@@ -84,6 +94,7 @@ def index_html(width: int, height: int, duration: float, video: str = "assets/cu
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    {FONT_LINK}
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       html, body {{ margin: 0; padding: 0; width: {width}px; height: {height}px; overflow: hidden; background: #000; }}
@@ -109,3 +120,22 @@ def index_html(width: int, height: int, duration: float, video: str = "assets/cu
 
 def groups_json(groups: list[dict]) -> str:
     return json.dumps([{"text": g["text"], "start": g["start"], "end": g["end"]} for g in groups], indent=1)
+
+
+
+def caption_card_html(group: dict, lit: int, band: dict, accent: str, font_px: int) -> str:
+    """One caption state as a page the band's size with a transparent body: drawn once to a
+    PNG and laid over the video by ffmpeg. The look is captions_html's, word `lit` in the accent colour."""
+    lit_style = f' style="color:{accent}"'
+    spans = " ".join(f'<span class="w"{lit_style if k == lit else ""}>{html.escape(w["text"])}</span>'
+                     for k, w in enumerate(group["words"]))
+    return f"""<!doctype html>
+<html><head><meta charset="UTF-8">{FONT_LINK}
+<style>
+  html, body {{ margin: 0; padding: 0; width: {band['width']}px; height: {band['height']}px; background: transparent; overflow: hidden; }}
+  .cap {{ width: {band['width']}px; height: {band['height']}px; display: flex; align-items: center; justify-content: center; text-align: center; }}
+  .cap-in {{ {caption_look()} font-size: {font_px}px; }}
+  .w {{ color: #FFFFFF; }}
+</style></head>
+<body><div class="cap"><div class="cap-in">{spans}</div></div></body></html>
+"""
