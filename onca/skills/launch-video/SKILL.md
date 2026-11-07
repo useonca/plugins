@@ -30,6 +30,7 @@ The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain 
 ## Save and post
 
 - Save each kept video with Onca's `library_upload`: `name`, a `description` (required: the concept, the hook on screen, 9:16 or 16:9, the last frame), the spoken words or captions as `transcript`, `service: "onca"`, `model: "Onca video"`, the concept in `notes`, the script as `prompt`, no `cost` (it was free). Never put a rendering tool's name (HyperFrames, mlx-audio, Chatterbox, parakeet) in any library field. Run the `curl` line it returns within the hour; a file is up to 50 MB. `library_list` shows it saved.
+- The founder may comment on a saved video in the Onca Library. Read the comments with `get_media_feedback(asset_id)` before you change it. Save the fixed render with `library_upload(..., version_of=<asset_id>)`, then mark each comment with `update_media_feedback`.
 - Post with Onca's `schedule_post`, the saved video as media; the founder approves every post. A TikTok post also needs its `tiktok` settings, which the founder picks. Music: on a business account the founder adds a licensed sound from the platform's own library when posting.
 - Fit each post to its platform before scheduling: length, format and caption rules are in Onca's playbook platform-fit (get_playbook("platform-fit")); a video for Instagram, TikTok and Facebook is exported without another app's logo.
 

@@ -121,6 +121,10 @@ Write each problem as P0 (breaks the read or is wrong) or P1 (worth fixing), fix
 
 Give the founder the finals, the before and after length, what the review found and fixed, and anything left. Listening is theirs: you cannot hear the audio, so say so and give the numbers.
 
+### 9. Fix the founder's comments
+
+The founder may comment on a saved video in the Onca Library, each comment pinned to a moment and maybe a box. Before you edit that video again, read them with Onca's `get_media_feedback(asset_id)` (exact times, the box and a frame of each). Fix them, render, then save the result with `library_upload(..., version_of=<asset_id>)` so it becomes the next version. Then mark each comment with `update_media_feedback`: `fixed`, with the new version and where the fix is.
+
 ## Providers
 
 Each step can use another free program or a result the client already has, through `providers.json` (`references/providers.md`): `transcribe`, `voice`, `separate`, `encode`. The default is always the free local tool. A known paid CLI is refused; a paid service runs only through Onca's tools with the founder's yes, and its result comes in as a `file`.
