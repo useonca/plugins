@@ -2,7 +2,10 @@
   "mcpServers": {
     "onca": {
       "type": "http",
-      "url": "https://mcp.useonca.com/mcp"
+      "url": "https://mcp.useonca.com/mcp",
+      "headers": {
+        "X-Onca-Plugin": "1.2.4"
+      }
     }
   }
 }
