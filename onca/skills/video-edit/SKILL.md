@@ -11,6 +11,7 @@ The decisions are yours (what to keep, which take, what goes on screen when); th
 
 ## Setup check
 
+- Starting a new video rather than editing one the founder gave you? Begin with the `launch-video` skill's "Start from Onca's templates". Onca's tools (templates, brand kit, Library) need the founder signed in: if they are missing or a call asks for sign-in, say so in plain words and give the sign-in steps from the `launch-video` skill's "Is Onca signed in?" section before working on without them.
 - Run `python3 ../video-render/scripts/doctor.py check` from this skill's folder. It lists what is missing with the install command for each; show the founder the commands and run them only after their yes. Voice separation is optional (`only for voice separation`): install it when the room is noisy or music must sit under the voice.
 - Scripts are stdlib Python: run them with `python3`. `S` is this skill's `scripts/` folder (the absolute path of the folder this SKILL.md is in, plus `/scripts`).
 - Work in an `edit/` folder next to the source (or the scratchpad); never write into the skill folder.

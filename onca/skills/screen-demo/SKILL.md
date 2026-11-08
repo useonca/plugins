@@ -58,7 +58,7 @@ Plan, voice and build a chaptered 16:9 demo: `references/long-demo.md`. In short
 
 ## Templates and other skills
 
-- Onca's templates `walkthrough` and `product-demo` (`get_template`) give the structure; this skill gives the footage.
+- Onca's templates `walkthrough` and `product-demo` (`get_template`) give the structure; this skill gives the footage. Onca's tools (templates, brand kit, Library) need the founder signed in: if they are missing or a call asks for sign-in, say so in plain words and give the sign-in steps from the `launch-video` skill's "Is Onca signed in?" section before working on without them.
 - Photo and code-made b-roll between product shots: the `b-roll` skill.
 - Short vertical launch videos: the `launch-video` skill, with footage from here.
 - Narration: the `voice` skill. Captions on a talking video: `video-edit`.

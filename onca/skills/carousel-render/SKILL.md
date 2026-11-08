@@ -9,6 +9,7 @@ Every slide is rendered locally and costs nothing: no image generation. Paths be
 
 ## Before you write
 
+0. Onca's tools (templates, brand kit, Library) need the founder signed in: if they are missing or a call asks for sign-in, say so in plain words and give the sign-in steps from the `launch-video` skill's "Is Onca signed in?" section before working on without them.
 1. `get_template` for the template the founder picked: its `Make it` section says the slides, the hook and the layout; its brief rule says what `schedule_post`'s brief must hold.
 2. `get_brand_kit` for the project: use its colors, fonts, voice, logos and screens. Download each logo and screen you use with `library_get` (its `url`) into the carousel folder's `assets/`; never draw a logo or a product screen from memory. An empty kit: ask the founder for a logo and two colors, save them with `update_brand_kit`, then go on.
 3. Make a folder of its own for this carousel (never inside this plugin) and work there.

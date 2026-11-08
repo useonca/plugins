@@ -1,11 +1,19 @@
 ---
 name: launch-video
-description: Onca's method for a product launch, ad or social video, made free on the founder's Mac from the product's real UI. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product.
+description: Onca's method for a product launch, ad or social video, made free on the founder's Mac from the product's real UI. Starts from Onca's video templates (list_templates, get_template) and checks Onca is signed in; falls back to researched creative mechanisms. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product.
 ---
 
 # Launch video
 
 The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain a software product with its real UI, at no generation cost. It works for any product. Rendering is the `video-render` skill's job, editing a recording is `video-edit`'s (real footage, cutaways, picture-in-picture, music and captions go through its timeline in one render) and narration is `voice`'s; carousels and still images are `carousel-render`'s; paths are from this skill's folder (the folder this SKILL.md is in): run each as that folder's absolute path plus the path, because commands run from the video's own folder.
+
+## Is Onca signed in?
+
+Do this first, before Step 0 (which also needs Onca): call Onca's `whoami`. If Onca's tools are not in your tool list, or a call answers that sign-in is needed, tell the founder in plain words, before you work on without Onca: "Onca is not signed in here, so I cannot open its video templates, your brand kit or your Library. To sign in: <the line for this client>." Then wait for them.
+- Claude Code: type `/reload-plugins` if the plugin was just installed, then `/mcp`, choose onca and Authenticate.
+- Claude Desktop: the Onca plugin's Connectors tab, connect Onca.
+- Codex: start a new session and use the sign-in prompt.
+Go on without Onca only if the founder says so, and then say that no template or brand kit was used.
 
 ## Step 0: is this plugin current?
 
@@ -15,14 +23,23 @@ The Onca method for short vertical videos (15 to 25 seconds, 9:16) that explain 
 4. `current`, `newer` or `unknown`: go on.
 5. Before the first video of a session, run `python3 ../video-render/scripts/doctor.py check` and handle what is missing as the `video-render` skill says.
 
+## Start from Onca's templates
+
+Onca keeps proven video formats. Use them before inventing a concept.
+1. Call `list_templates` with `format: "short-video"` and again with `format: "long-video"` (a long chaptered demo). Each card has a tagline, a summary and what it fits.
+2. Pick the one or two that fit the founder's product and goal, open them with `get_template` and read `Make it` (the structure and shots) and `Brief` (what the post's brief must hold). Propose them to the founder in a line each, with your pick first, and let the founder choose.
+3. A locked template (`get_template` answers with the code `template_locked` and the plan line: the plan opens a few new templates a month) is not a failure of the work: offer another open one and say the plan line once. The cards from `list_templates` show which are open. Read `get_brand_kit` for the look; an empty kit means the logo and colours come from the product's own files.
+4. Build the chosen template with the method below: its `Make it` replaces step 4 (the five concepts) and fixes the hook, info and closure; the facts, the build, the review and the saving stay the same. Name it in `schedule_post`'s `template` field when posting.
+5. Only when no template fits, or the founder asks for other options, use the five concepts of the method, and say that no template fitted.
+
 ## The method
 
 1. **Facts and brand.** Read the product's facts (its repo or docs, read only: features, defaults, limits), its look (logo, colours, fonts, real UI screens or markup) and the founder's brief; `get_project_profile` has the positioning. A video claims only what the product does. Demo data only.
    Make the UI footage yourself with the `screen-demo` skill (the Onca production kit): reuse what the project renders, else rebuild the screens from source (the default), else record the running product when its rules allow. Never ask the founder to record, stage or type demo data. Cutaways: the `b-roll` skill. A long chaptered YouTube demo: `screen-demo`'s long demos and the `youtube-demo` playbook.
 2. **Structure.** Every video is a HOOK (the first 1 to 3 seconds make the viewer feel something and want an answer), the INFO (the value shown in real UI) and the CLOSURE (the last seconds answer the hook literally).
-3. **Research mechanisms, not "best ads".** Study creative mechanisms (`references/mechanisms.md`), the platform's own creative rules and what reads as cheap or premium. Keep each source and how sure it is.
-4. **Five concepts on five different mechanisms**, never five versions of one idea. Each: name and one-line premise; hook (what is on screen, what the viewer feels, which question it opens); info; closure (how the question is answered, last frame); why it works; production route (free motion design, or the paid shot it would need, described and not generated); risk. Rank them.
-5. **The founder picks**: one, a pair with the most different hooks to A/B, or all.
+3. **Research mechanisms, not "best ads"** (skip it when a template was chosen). Study creative mechanisms (`references/mechanisms.md`), the platform's own creative rules and what reads as cheap or premium. Keep each source and how sure it is.
+4. **Five concepts on five different mechanisms** (only when no Onca template fits, or the founder wants alternatives to it), never five versions of one idea. Each: name and one-line premise; hook (what is on screen, what the viewer feels, which question it opens); info; closure (how the question is answered, last frame); why it works; production route (free motion design, or the paid shot it would need, described and not generated); risk. Rank them.
+5. **The founder picks** (already done when a template was chosen): one, a pair with the most different hooks to A/B, or all.
 6. **Build every pick at the same time**, one project folder per concept, all from one shared brief (`references/build-rules.md`). Write each composition with the `hyperframes` skill and render it with `video-render`.
 7. **Self-review** each video on its 14-frame contact sheet (`video-render`'s step 4): small type, text outside the safe box (for Instagram, the middle 4:5: y 285 to 1635; not verified, Instagram publishes no numbers for its feed crop, so check a real post before a paid ad), two changes at once, a claim the product cannot back. Fix, render again. Check the length against the read time.
 8. **The founder watches every video with sound on** and picks the winner (you cannot hear the mix: say so). Fix weak spots in the winner only.
