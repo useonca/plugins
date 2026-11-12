@@ -6,7 +6,9 @@ usage: kit.py new PROJECT [--size 1080x1920] [--fps 30] [--duration 12]
        kit.py brand PROJECT --kit KIT.json [--fonts DIR]...
        kit.py check PROJECT
        kit.py shot PAGE.html OUT.png [--width 390] [--height 844] [--scale 3] [--no-trim]
-       kit.py voice PROJECT --lines LINES.json [--asr WORDS.json] [--max-pause 0.28 | --keep-pauses] [--tempo 1.0] [--raw]
+       kit.py script PROJECT --lines LINES.json [--kit KIT.json] [--respell] --out TAKE.json
+       kit.py voice PROJECT --lines LINES.json [--take TAKE.wav --take-words WORDS.json] [--kit KIT.json]
+                    [--asr WORDS.json] [--max-pause 0.6 | --keep-pauses] [--tempo 1.0] [--raw]
        kit.py pick CHOICES.json --out PICK.json [--minutes 10] [--no-open]
        kit.py beats PROJECT --music BED
        kit.py sound PROJECT --video RENDER.mp4 [--music BED] [--music-db -18] [--voice VOICE.wav]
@@ -268,11 +270,9 @@ def cmd_sync(a) -> None:
 
 def cmd_brand(a) -> None:
     project = Path(a.project)
-    kit = read_json(Path(a.kit), "kit")
-    if isinstance(kit, dict) and isinstance(kit.get("brand_kit"), dict):
-        kit = kit["brand_kit"]
+    kit = load_kit(Path(a.kit))
     brand = read_json(project / "brand.json", "brand") if (project / "brand.json").exists() else {}
-    problems = kit_core.validate_brand(brand) + ([] if isinstance(kit, dict) else ["kit: a get_brand_kit answer is an object"])
+    problems = kit_core.validate_brand(brand)
     if problems:
         bad_input(problems)
     filled = kit_core.brand_from_kit(kit, brand)
@@ -394,9 +394,8 @@ def media_seconds(path: Path):
         return None
 
 
-def tighten(ffmpeg: str, src: Path, out: Path, max_pause) -> tuple:
-    """(seconds before, seconds after, pauses cut): the line decoded to 48 kHz mono, its quiet ends trimmed and
-    its long pauses cut (kit_core.keep_spans on video-edit's levels and quiet floor), written to `out`."""
+def decode(ffmpeg: str, src: Path):
+    """The audio of `src` as 48 kHz mono 16-bit samples (an array), decoded by ffmpeg on a pipe."""
     from array import array
     try:
         done = subprocess.run([ffmpeg, "-v", "error", "-i", str(src), "-ac", "1", "-ar", "48000", "-f", "s16le", "-"],
@@ -405,83 +404,270 @@ def tighten(ffmpeg: str, src: Path, out: Path, max_pause) -> tuple:
         tool_failed(f"ffmpeg's decode of {src.name}", str(e))
     if done.returncode:
         tool_failed(f"ffmpeg's decode of {src.name}", done.stderr.decode("utf-8", "replace").strip()[-800:])
-    samples = array("h", done.stdout[:len(done.stdout) // 2 * 2])  # little-endian, as on every supported machine
-    levels = kit_core.edit_core.levels_db(samples, 48000)
-    spans = kit_core.keep_spans(levels, kit_core.edit_core.quiet_floor(levels), max_pause)
+    return array("h", done.stdout[:len(done.stdout) // 2 * 2])  # little-endian, as on every supported machine
+
+
+def write_piece(samples, spans: list, out: Path) -> float:
+    """The kept spans (seconds) of `samples`, each faded at its edges so no cut clicks, as one 48 kHz WAV."""
+    from array import array
     kept = array("h")
-    for start, end in spans or [(0, len(samples) / 48000)]:
-        piece = samples[int(start * 48000):int(end * 48000)]
-        if spans:
-            kit_core.fade_edges(piece, 48000)
+    for start, end in spans:
+        piece = samples[int(round(start * 48000)):int(round(end * 48000))]
+        kit_core.fade_edges(piece, 48000)
         kept += piece
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(out), "wb") as w:
+    write_wav(out, kept.tobytes())
+    return len(kept) / 48000
+
+
+def write_wav(path: Path, frames: bytes, rate: int = 48000) -> None:
+    """Mono 16-bit samples as a WAV file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
-        w.setframerate(48000)
-        w.writeframes(kept.tobytes())
-    return len(samples) / 48000, len(kept) / 48000, max(0, len(spans) - 1)
+        w.setframerate(rate)
+        w.writeframes(frames)
+
+
+def read_words(path: Path, what: str) -> list:
+    """Recognised words [{i, text, start, end}] through video-edit's normalizer (any transcript it reads)."""
+    import providers
+    try:
+        words = providers.normalize_words(read_json(path, what))
+    except ValueError as e:
+        bad_input([f"{what}: {path}: {e}"])
+    if not words:
+        bad_input([f"{what}: {path} holds no words ([{{text, start, end}}], as transcribe.py writes)"])
+    return words
+
+
+def load_kit(path: Path) -> dict:
+    """A saved get_brand_kit answer: the kit itself (unwrapped from the answer's `kit`, or a `brand_kit`)."""
+    kit = read_json(path, "kit")
+    for key in ("kit", "brand_kit"):
+        if isinstance(kit, dict) and isinstance(kit.get(key), dict):
+            kit = kit[key]
+    if not isinstance(kit, dict):
+        bad_input(["kit: a get_brand_kit answer is an object"])
+    return kit
+
+
+def guide_of(a) -> tuple:
+    """(kit, guide, problems): the saved get_brand_kit answer from --kit and its pronunciation guide, checked."""
+    if not getattr(a, "kit", None):
+        return {}, [], []
+    kit = load_kit(Path(a.kit))
+    guide = kit.get("pronunciations") or []
+    return kit, guide, [f"kit: {p}" for p in kit_core.validate_guide(guide)]
+
+
+def project_cues(project: Path) -> dict:
+    return read_json(project / "cues.json", "cues") if (project / "cues.json").exists() else {}
+
+
+def resolved_lines(doc: dict, cues: dict) -> tuple:
+    """(lines, problems): lines.json's lines with their beats resolved against cues.json and their text trimmed."""
+    lines, problems = kit_core.resolve_line_targets(doc["lines"], cues.get("cues") or [])
+    return [dict(ln, text=ln["text"].strip()) for ln in lines], problems
+
+
+def cmd_script(a) -> None:
+    project, doc = Path(a.project), read_json(Path(a.lines), "lines")
+    problems = kit_core.validate_lines(doc, take=True)
+    kit, guide, more = guide_of(a)
+    lines, resolve_problems = resolved_lines(doc, project_cues(project)) if not problems else ([], [])
+    problems += more + resolve_problems
+    if problems:
+        bad_input(problems)
+    take = kit_core.take_script(lines, guide, a.respell)
+    narrator = kit.get("narrator") if isinstance(kit.get("narrator"), dict) else {}
+    take["style"] = kit_core.take_style(str(narrator.get("style") or ""), take["style_hint"])
+    if len(take["style"]) > kit_core.STYLE_MAX:
+        take["warnings"].append(f"the style line (the narrator's style and the hint) is {len(take['style'])} characters, "
+                                f"over Onca voice's {kit_core.STYLE_MAX}: shorten the narrator's style, or pass --respell")
+    write_json(Path(a.out), take)
+    log("script", f"{len(lines)} lines, {take['chars']} characters, {take['text'].count('<short pause>')} short and "
+                  f"{take['text'].count('<long pause>')} long pauses -> {Path(a.out).as_posix()}")
+    log("script", f"style hint: {take['style_hint']}" if take["style_hint"] else "style hint: none (no guide word, or respelled)")
+    if take["style"]:
+        log("script", f"make_voiceover style: {take['style']}")
+    for w in take["warnings"]:
+        log("script", f"warning: {w}")
+
+
+def _line_report(ln: dict) -> str:
+    if ln["target"] is None:
+        return f"line {ln['id']}: no beat, at {ln['at']:.2f} s"
+    return (f"line {ln['id']}: beat {ln['target']:g}, lands {ln['lands']:.2f} ({ln['late']:+.2f})"
+            + (", pauses shrunk" if ln["shrunk"] else ""))
 
 
 def cmd_voice(a) -> None:
     project = Path(a.project)
     doc = read_json(Path(a.lines), "lines")
-    problems = kit_core.validate_lines(doc)
+    take = bool(a.take)
+    line_problems = kit_core.validate_lines(doc, take=take)
+    problems = list(line_problems)
     low, high = kit_core.TEMPO_RANGE
     if not low <= a.tempo <= high:
         problems.append(f"--tempo must be {low:g} to {high:g} (a gentle change), got {a.tempo:g}")
     if a.max_pause is not None and a.max_pause < 0.1:
         problems.append(f"--max-pause must be 0.1 s or more, got {a.max_pause:g}")
+    if bool(a.take) != bool(a.take_words):
+        problems.append("--take and --take-words go together: the take WAV and its words (video-edit's transcribe.py "
+                        "TAKE.wav --out WORDS.json, without --fix)")
+    if a.take and a.raw:
+        problems.append("--raw is for line files edited by hand; a take is always cut and fitted")
     base = Path(a.lines).resolve().parent
     sources = {}
-    for ln in doc.get("lines", []) if not problems else []:
+    if take and not Path(a.take).exists():
+        problems.append(f"--take: cannot read {Path(a.take).resolve()}")
+    for ln in doc["lines"] if not line_problems and not take and not a.take_words else []:
         sources[ln["id"]] = (base / ln["file"]).resolve()
         if not sources[ln["id"]].exists():
             problems.append(f"line {ln['id']}: cannot read {sources[ln['id']]}")
+    _kit, guide, more = guide_of(a)
+    cues = project_cues(project)
+    lines, resolve_problems = resolved_lines(doc, cues) if not line_problems else ([], [])
+    problems += more + resolve_problems
     if problems:
         bad_input(problems)
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         tool_failed("ffmpeg", f"not found: {plan()['install']['ffmpeg']}")
-    durations = {}
-    for ln in doc["lines"]:
+    max_pause = None if a.keep_pauses else a.max_pause
+    targets = {ln["id"]: ln["at"] for ln in lines if ln["at"] is not None}
+    duration = float(cues.get("duration") or 0)
+    fit_args = (targets, duration, float(doc.get("gap", 0.25)), float(doc.get("lead", 0.3)), a.tempo)
+    texts = {ln["id"]: ln["text"] for ln in lines}
+    if take:
+        fitted, run_together, heard_by_line, words = voice_take(a, ffmpeg, lines, max_pause, fit_args, project)
+    else:
+        fitted, words, heard_by_line = voice_lines(a, ffmpeg, lines, sources, max_pause, fit_args, project)
+        run_together = []
+    heard_wrong = kit_core.brand_misses([{"id": i, "text": t} for i, t in texts.items() if i in heard_by_line],
+                                        heard_by_line, guide)
+    remake = kit_core.remake_advice(fitted, run_together, heard_wrong)
+    file_of = {p["id"]: p["file"] for p in fitted["pieces"]}
+    r3 = lambda v: None if v is None else round(v, 3)  # noqa: E731
+    fit_lines = [dict(ln, at=r3(ln["at"]), end=r3(ln["end"]), lands=r3(ln["lands"]), late=r3(ln["late"])) for ln in fitted["lines"]]
+    out_lines = [{"id": ln["id"], "file": Path(a.take).resolve().as_posix() if take else file_of[ln["id"]],
+                  "text": texts[ln["id"]], "at": ln["at"], "end": ln["end"], "target": ln["target"], "late": ln["late"]}
+                 for ln in fit_lines]
+    end = max(ln["end"] for ln in fitted["lines"])
+    seconds = max(duration, end + 0.5)  # never cut the voice
+    run([ffmpeg] + kit_core.voice_mix_args(fitted["pieces"], seconds, (project / "voice.wav").resolve(), fitted["tempo"]),
+        "ffmpeg's voice mix")
+    write_json(project / "words.json", words)
+    write_json(project / "voice-lines.json", out_lines)
+    write_json(project / "voice-fit.json", {
+        "tempo": fitted["tempo"],
+        "lines": fit_lines,
+        "misses": fitted["misses"], "run_together": [list(p) for p in run_together], "heard_wrong": heard_wrong, "remake": remake})
+    for ln in fitted["lines"]:
+        log("voice", _line_report(ln))
+    log("voice", f"{len(out_lines)} lines, {fitted['lines'][0]['at']:.2f} to {end:.2f} s at tempo {fitted['tempo']:g}"
+                 " -> voice.wav, words.json (the script's spelling, each word with its line), voice-lines.json, voice-fit.json")
+    misses = []
+    for m in fitted["misses"]:
+        if m["id"] == "duration":
+            log("voice", f"note: {m['why']}" + (" (sync stops until it fits)" if end > duration else ""))
+        else:
+            misses.append(m)
+    if misses or heard_wrong:
+        log("voice", f"warning: voice: {len(misses)} misses, {len(heard_wrong)} brand words heard wrong; see voice-fit.json"
+                     + (" (a remake is advised: ask the founder first)" if remake["advised"] else ""))
+
+
+def voice_take(a, ffmpeg: str, lines: list, max_pause, fit_args: tuple, project: Path) -> tuple:
+    """One take: aligned with its words, cut in the silence between lines, each piece measured and fitted."""
+    samples = decode(ffmpeg, Path(a.take))
+    take_seconds = len(samples) / 48000
+    heard = read_words(Path(a.take_words), "take-words")
+    spans, problems = kit_core.align_take([{"id": ln["id"], "say": ln.get("say") or ln["text"]} for ln in lines], heard)
+    if problems:
+        bad_input(problems)
+    segments, run_together = kit_core.take_segments(spans, take_seconds)
+    levels = kit_core.edit_core.levels_db(samples, 48000)
+    floor, hop = kit_core.edit_core.quiet_floor(levels), kit_core.edit_core.LEVEL_HOP
+    by_id = {s["id"]: s for s in spans}
+    measured, pieces = [], []
+    for seg in segments:
+        i0, i1 = int(round(seg["src_start"] / hop)), int(round(seg["src_end"] / hop))
+        t0 = i0 * hop
+        m = kit_core.measure_segment(levels[i0:i1], floor, [by_id[i]["start"] - t0 for i in seg["ids"]], max_pause)
+        later = {i: [m["leads"][k], m["leads_shrunk"][k]] for k, i in enumerate(seg["ids"]) if k}
+        measured.append((seg, m, t0))
+        pieces.append({"ids": seg["ids"], "length": m["length"], "lead": m["lead"], "lead_shrunk": m["leads_shrunk"][0],
+                       "shrinkable": m["shrinkable"], "later": later})
+    fitted = kit_core.fit(pieces, *fit_args)
+    at_of = {ln["id"]: ln for ln in fitted["lines"]}
+    text_of = {ln["id"]: ln["text"] for ln in lines}
+    words, out_pieces = [], []
+    for seg, m, t0 in measured:
+        first = at_of[seg["ids"][0]]
+        kept = [(x + t0, y + t0) for x, y in (m["shrunk_spans"] if first["shrunk"] else m["spans"])]
+        path = (project / "voice-lines" / f"{seg['ids'][0]}.wav").resolve()
+        write_piece(samples, kept, path)
+        out_pieces.append({"id": seg["ids"][0], "file": path.as_posix(), "at": first["at"]})
+        for i in seg["ids"]:
+            mapped = [{"text": w["text"], "start": kit_core.map_time(kept, first["at"], fitted["tempo"], w["start"]),
+                       "end": kit_core.map_time(kept, first["at"], fitted["tempo"], w["end"])} for w in by_id[i]["words"]]
+            ln = dict(at_of[i], text=text_of[i])
+            ln["at"], ln["end"] = min(ln["at"], mapped[0]["start"]), max(ln["end"], mapped[-1]["end"])
+            words += [dict(w, line=i) for w in kit_core._line_words(ln, mapped)]
+    fitted["pieces"] = out_pieces
+    log("voice", f"take {take_seconds:.2f} s, {len(spans)} lines in {len(segments)} pieces"
+                 + (f"; ran together: {', '.join(f'{x}+{y}' for x, y in run_together)}" if run_together else ""))
+    return fitted, run_together, {s["id"]: s["words"] for s in spans}, words
+
+
+def voice_lines(a, ffmpeg: str, lines: list, sources: dict, max_pause, fit_args: tuple, project: Path) -> tuple:
+    """One file a line: each tightened (unless --raw), then fitted like a take's pieces."""
+    pieces, kept = [], {}
+    for ln in lines:
         path = sources[ln["id"]]
         if a.raw:  # a take already edited by hand
             seconds = media_seconds(path)
             if seconds is None:
                 bad_input([f"line {ln['id']}: cannot read {path}"])
-        else:
-            path = (project / "voice-lines" / f"{ln['id']}.wav").resolve()
-            before, seconds, cut = tighten(ffmpeg, sources[ln["id"]], path, None if a.keep_pauses else a.max_pause)
-            log("voice", f"line {ln['id']}: {before:.2f} -> {seconds:.2f} s (quiet ends trimmed"
-                         + (f", {cut} long pauses cut to {a.max_pause:g} s)" if cut else ")"))
-        durations[ln["id"]] = seconds / a.tempo
-        ln["file"] = path.as_posix()
-    try:
-        placed = kit_core.place_lines(doc["lines"], durations, float(doc.get("lead", 0.3)), float(doc.get("gap", 0.25)))
-    except ValueError as e:
-        bad_input([str(e)])
-    asr = None
+            pieces.append({"ids": [ln["id"]], "length": seconds, "lead": 0.0, "shrinkable": 0.0})
+            continue
+        samples = decode(ffmpeg, path)
+        levels = kit_core.edit_core.levels_db(samples, 48000)
+        m = kit_core.measure_segment(levels, kit_core.edit_core.quiet_floor(levels), [], max_pause)
+        if not m["spans"]:  # no sound: kept as it is
+            m = dict(m, spans=[(0.0, len(samples) / 48000)], shrunk_spans=[(0.0, len(samples) / 48000)],
+                     length=len(samples) / 48000, shrinkable=0.0)
+        kept[ln["id"]] = (samples, m)
+        pieces.append({"ids": [ln["id"]], "length": m["length"], "lead": m["lead"], "shrinkable": m["shrinkable"]})
+    fitted = kit_core.fit(pieces, *fit_args)
+    out_pieces = []
+    for ln in fitted["lines"]:
+        if ln["id"] not in kept:
+            out_pieces.append({"id": ln["id"], "file": sources[ln["id"]].as_posix(), "at": ln["at"]})
+            continue
+        samples, m = kept[ln["id"]]
+        spans = m["shrunk_spans"] if ln["shrunk"] else m["spans"]
+        path = (project / "voice-lines" / f"{ln['id']}.wav").resolve()
+        seconds = write_piece(samples, spans, path)
+        cut = max(0, len(spans) - 1)
+        log("voice", f"line {ln['id']}: {len(samples) / 48000:.2f} -> {seconds:.2f} s (quiet ends trimmed"
+                     + (f", {cut} long pauses cut to {kit_core.SHRINK_PAUSE if ln['shrunk'] else max_pause:g} s)" if cut else ")"))
+        out_pieces.append({"id": ln["id"], "file": path.as_posix(), "at": ln["at"]})
+    fitted["pieces"] = out_pieces
+    asr, heard_by_line = None, {}
+    text_of = {ln["id"]: ln["text"] for ln in lines}
+    placed = [dict(ln, text=text_of[ln["id"]]) for ln in fitted["lines"]]
     if a.asr:
-        asr = read_json(Path(a.asr), "asr")
-        asr = asr.get("words", []) if isinstance(asr, dict) else asr
-        inside = [w for w in asr if any(p["at"] - 0.05 <= w.get("start", -1) < p["end"] + 0.05 for p in placed)]
+        asr = read_words(Path(a.asr), "asr")
+        inside = [w for w in asr if any(p["at"] - 0.05 <= w["start"] < p["end"] + 0.05 for p in placed)]
         if len(inside) < len(asr) / 2:
             log("voice", "warning: most --asr words fall outside the placed lines, so their times are not used: "
                          "--asr must be the transcript of this project's voice.wav (run voice, transcribe voice.wav, run voice again)")
-    cues = read_json(project / "cues.json", "cues") if (project / "cues.json").exists() else {}
-    seconds = max(float(cues.get("duration") or 0), placed[-1]["end"] + 0.5)  # never cut the voice
-    if cues.get("duration") and placed[-1]["end"] > float(cues["duration"]):
-        log("voice", f"note: the voice ends at {placed[-1]['end']:g} s, past the video's {float(cues['duration']):g} s: "
-                     f"set cues.json duration to {placed[-1]['end'] + 0.5:g}, then kit.py sync sets the page's length "
-                     "(sync stops until it fits)")
-    run([ffmpeg] + kit_core.voice_mix_args(placed, seconds, (project / "voice.wav").resolve(), a.tempo), "ffmpeg's voice mix")
-    write_json(project / "words.json", kit_core.script_words(placed, asr))
-    write_json(project / "voice-lines.json", placed)
-    log("voice", f"{len(placed)} lines, {placed[0]['at']:g} to {placed[-1]['end']:g} s"
-                 + (f" at tempo {a.tempo:g}" if a.tempo != 1 else "")
-                 + f" -> voice.wav, words.json (the script's spelling, each word with its line; times "
-                 f"{'from the recognised words' if asr else 'spread by length'}), voice-lines.json")
+        heard_by_line = {p["id"]: [w for w in asr if p["at"] - 0.05 <= w["start"] < p["end"] + 0.05] for p in placed}
+        heard_by_line = {i: ws for i, ws in heard_by_line.items() if ws}  # a line nothing was heard in is not checked
+    return fitted, kit_core.script_words(placed, asr), heard_by_line
 
 
 # ---------------------------------------------------------------- pick
@@ -533,11 +719,7 @@ def sfx_index() -> dict:
 
 
 def silence(path: Path, seconds: float, rate: int = 48000) -> None:
-    with wave.open(str(path), "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(rate)
-        w.writeframes(b"\x00\x00" * int(round(seconds * rate)))
+    write_wav(path, b"\x00\x00" * int(round(seconds * rate)), rate)
 
 
 def wav_seconds(path: Path):
@@ -711,11 +893,21 @@ def main(argv=None) -> None:
     s.add_argument("--scale", type=float, default=3)
     s.add_argument("--no-trim", action="store_true")
     s.set_defaults(fn=cmd_shot)
-    s = sub.add_parser("voice", help="place the narration's line files into voice.wav and words.json")
+    s = sub.add_parser("script", help="the whole script as one take, with pause tags sized to the video's beats")
     s.add_argument("project")
     s.add_argument("--lines", required=True)
+    s.add_argument("--kit")
+    s.add_argument("--respell", action="store_true")
+    s.add_argument("--out", required=True)
+    s.set_defaults(fn=cmd_script)
+    s = sub.add_parser("voice", help="fit the narration (one take, or a file a line) to the beats -> voice.wav and words.json")
+    s.add_argument("project")
+    s.add_argument("--lines", required=True)
+    s.add_argument("--take")
+    s.add_argument("--take-words")
+    s.add_argument("--kit")
     s.add_argument("--asr")
-    s.add_argument("--max-pause", type=float, default=kit_core.MAX_PAUSE)
+    s.add_argument("--max-pause", type=float, default=kit_core.KEEP_PAUSE)
     s.add_argument("--keep-pauses", action="store_true")
     s.add_argument("--tempo", type=float, default=1.0)
     s.add_argument("--raw", action="store_true")

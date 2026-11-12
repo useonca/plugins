@@ -599,38 +599,166 @@ def _item_problems(items: list, label: str, keys: tuple) -> list:
 
 
 LINE_ID = re.compile(r"[A-Za-z0-9_-]+")
+SAY_TEXT_MAX = 2000  # a line's `say`: its text as spoken
 
 
-def validate_lines(doc) -> list:
-    """Every problem with a lines.json: {lead?, gap?, lines: [{id, file, text, at?}]}."""
+def _at_problems(where: str, at) -> list:
+    if isinstance(at, dict):
+        out = [f"{where}: at has unknown key {k!r} (cue, offset)" for k in at if k not in ("cue", "offset")]
+        if not isinstance(at.get("cue"), str) or not at["cue"]:
+            out.append(f"{where}: at.cue must be a cue id from cues.json")
+        if "offset" in at and not _num(at["offset"]):
+            out.append(f"{where}: at.offset must be seconds, got {at['offset']!r}")
+        return out
+    return [] if _num(at) and at >= 0 else [f"{where}: at must be seconds, 0 or more, or {{cue, offset?}}, got {at!r}"]
+
+
+def validate_lines(doc, take: bool = False) -> list:
+    """Every problem with a lines.json: {lead?, gap?, lines: [{id, text, file, say?, at?}]}, `at` seconds or
+    {cue, offset?}. A take's lines (`take`) have no file: the take is the one file."""
     if not isinstance(doc, dict) or not isinstance(doc.get("lines"), list) or not doc["lines"]:
         return ["lines.json must be an object with a non-empty lines list"]
     problems = []
     for key in ("lead", "gap"):
         if key in doc and not (_num(doc[key]) and doc[key] >= 0):
             problems.append(f"{key} must be seconds, 0 or more, got {doc[key]!r}")
-    problems += _item_problems(doc["lines"], "lines", ("id", "file", "text"))
+    problems += _item_problems(doc["lines"], "lines", ("id", "text") if take else ("id", "file", "text"))
     problems += [f"lines[{k}]: id {ln['id']!r} may hold only letters, digits, _ and - (it names voice-lines/ID.wav)"
                  for k, ln in enumerate(doc["lines"]) if isinstance(ln, dict) and isinstance(ln.get("id"), str)
                  and ln["id"].strip() and not LINE_ID.fullmatch(ln["id"])]
     for k, ln in enumerate(doc["lines"]):
-        if isinstance(ln, dict) and "at" in ln and not (_num(ln["at"]) and ln["at"] >= 0):
-            problems.append(f"lines[{k}]: at must be seconds, 0 or more, got {ln['at']!r}")
+        if not isinstance(ln, dict):
+            continue
+        if take and "file" in ln:
+            problems.append(f"lines[{k}]: a take's lines have no file (the take is --take); drop file")
+        if "at" in ln:
+            problems += _at_problems(f"lines[{k}]", ln["at"])
+        if "say" in ln and not (isinstance(ln["say"], str) and ln["say"].strip() and len(ln["say"]) <= SAY_TEXT_MAX):
+            problems.append(f"lines[{k}]: say must be the line as spoken, 1 to {SAY_TEXT_MAX} characters")
     return problems
 
 
-def place_lines(lines: list, durations: dict, lead: float = 0.3, gap: float = 0.25) -> list:
-    """Each line at its own `at`, else `gap` after the line before (the first at `lead`):
-    [{id, file, text, at, end}]. ValueError when a line would start before the one ahead of it ends."""
-    out, t, end = [], lead, 0.0
+def resolve_line_targets(lines: list, cues: list) -> tuple:
+    """(lines, problems): each line given `at`, its beat in seconds, or None when it has none: seconds as given,
+    or {cue, offset?} the start of that cue (whose own at must be seconds) plus offset. Beats go in line order."""
+    by_id = {c.get("id"): c for c in cues or [] if isinstance(c, dict)}
+    out, problems, last = [], [], None
     for ln in lines:
-        at = float(ln.get("at", t))
-        if at < end - 1e-6:
-            raise ValueError(f"line {ln['id']} starts at {at:g} s, before the line ahead of it ends at {end:g} s")
-        end = at + float(durations[ln["id"]])
-        out.append({"id": ln["id"], "file": ln["file"], "text": ln["text"].strip(), "at": round(at, 3), "end": round(end, 3)})
-        t = end + gap
-    return out
+        at, target = ln.get("at"), None
+        if isinstance(at, dict):
+            cue = by_id.get(at.get("cue"))
+            if cue is None:
+                problems.append(f"{ln['id']}: at cue {at.get('cue')} is not in cues.json")
+            elif not _num(cue.get("at")):
+                problems.append(f"{ln['id']}: at cue {at['cue']} is timed to a word; anchor lines to a fixed cue")
+            else:
+                target = round(max(0.0, float(cue["at"]) + float(at.get("offset", 0))), 3)
+        elif _num(at):
+            target = float(at)
+        if target is not None:
+            if last is not None and target < last[1] - 1e-9:
+                problems.append(f"{ln['id']}: its beat {target:g} s comes before {last[0]}'s {last[1]:g} s; "
+                                "lines go in the order they are said")
+            last = (ln["id"], target)
+        out.append(dict(ln, at=target))
+    return out, problems
+
+
+# ---------------------------------------------------------------- one take: the script, pronunciations
+
+PRONUNCIATIONS_MAX = 20  # the brand kit's limits (backend brand_kit.py holds the same numbers)
+SAY_WORD_MAX = 40
+SAY_MAX = 60
+SPEECH_CPS = 12.0  # characters a second of Onca voice in a calm style (measured on its samples)
+SHORT_TAG_FROM = 0.9  # a sentence end leaves about 0.7 s; <short pause> about 1.1 s; <long pause> about 1.3 s
+LONG_TAG_FROM = 1.4
+TAKE_MAX_CHARS = 3000  # past it Onca makes the take in parts
+STYLE_MAX = 200  # Onca voice's style line
+TAG = re.compile(r"<[^<>]+>")
+ENDS_WITH_TAG = re.compile(r"<[^<>]+>\s*$")
+STARTS_WITH_TAG = re.compile(r"^\s*<[^<>]+>")
+
+
+def validate_guide(guide) -> list:
+    """Every problem with a pronunciation guide: up to 20 {word, say}, word 1 to 40 characters, say 1 to 60,
+    no word twice (case ignored)."""
+    if guide is None:
+        return []
+    if not isinstance(guide, list):
+        return ["pronunciations must be a list of {word, say}"]
+    problems = [] if len(guide) <= PRONUNCIATIONS_MAX else [f"pronunciations has {len(guide)} items, over {PRONUNCIATIONS_MAX}"]
+    seen = set()
+    for k, item in enumerate(guide, 1):
+        if not isinstance(item, dict):
+            problems.append(f"pronunciation {k} must be {{word, say}}")
+            continue
+        for key, top in (("word", SAY_WORD_MAX), ("say", SAY_MAX)):
+            v = item.get(key)
+            if not isinstance(v, str) or not v.strip():
+                problems.append(f"pronunciation {k} needs {key}")
+            elif len(v.strip()) > top:
+                problems.append(f"pronunciation {k} {key} is {len(v.strip())} characters, over {top}")
+        word = item.get("word")
+        if isinstance(word, str) and word.strip():
+            if word.strip().lower() in seen:
+                problems.append(f"pronunciation {k} repeats {word.strip()!r}")
+            seen.add(word.strip().lower())
+    return problems
+
+
+def _guide_pattern(guide):
+    words = sorted({g["word"].strip() for g in guide or []}, key=len, reverse=True)
+    return re.compile(r"(?<!\w)(" + "|".join(map(re.escape, words)) + r")(?!\w)", re.I) if words else None
+
+
+def spoken(text: str, guide: list) -> str:
+    """`text` with each guide word (a whole word, any case) replaced by its `say`; punctuation and a possessive
+    's stay."""
+    pattern = _guide_pattern(guide)
+    if pattern is None:
+        return text
+    say = {g["word"].strip().lower(): g["say"].strip() for g in guide}
+    return pattern.sub(lambda m: say[m.group(1).lower()], text)
+
+
+def take_style(narrator_style: str, hint: str) -> str:
+    """make_voiceover's style for a take: the narrator's style, then the hint naming how brand words are said."""
+    narrator_style = narrator_style.strip().rstrip(".")
+    return f"{narrator_style}. {hint}" if narrator_style and hint else (narrator_style or hint)
+
+
+def pause_tag(gap: float) -> str:
+    """The pause tag for the silence the video leaves between two lines: none (a sentence end is enough),
+    <short pause> or <long pause>."""
+    if gap >= LONG_TAG_FROM:
+        return "<long pause>"
+    return "<short pause>" if gap >= SHORT_TAG_FROM else ""
+
+
+def take_script(lines: list, guide: list, respell: bool) -> dict:
+    """One take of the whole script: {text, style_hint, chars, lines: [{id, say}], warnings}. Lines (with their
+    beats resolved) go in order, one per row, each followed by the pause tag its gap to the next beat asks for
+    (estimated at SPEECH_CPS); `say` is a line as spoken (its own `say`, else its text, respelled with `respell`);
+    style_hint names each guide word the take says."""
+    says = [(ln.get("say") or (spoken(ln["text"], guide) if respell else ln["text"])).strip() for ln in lines]
+    rows = []
+    for k, (ln, say) in enumerate(zip(lines, says)):
+        nxt = lines[k + 1] if k + 1 < len(lines) else None
+        tag = ""
+        if (nxt is not None and ln.get("at") is not None and nxt.get("at") is not None
+                and not ENDS_WITH_TAG.search(say) and not STARTS_WITH_TAG.match(says[k + 1])):
+            tag = pause_tag(nxt["at"] - ln["at"] - len(TAG.sub("", say).strip()) / SPEECH_CPS)  # tags are not speech
+        rows.append(f"{say} {tag}" if tag else say)
+    text = "\n".join(rows)
+    used = [g for g in guide or [] if _guide_pattern([g]).search(text)]
+    warnings = []
+    if len(text) > TAKE_MAX_CHARS:
+        warnings.append(f"the take is {len(text)} characters, over {TAKE_MAX_CHARS}: Onca makes it in parts, which can "
+                        "shift the voice a little between them; shorten the script")
+    warnings += [f"line {ln['id']} has no end mark (. ! ? \u2026): the voice may run it into the next line"
+                 for ln, say in zip(lines, says) if not SENTENCE_END.search(TAG.sub("", say).strip())]
+    return {"text": text, "style_hint": ("Say " + ", ".join(f"{g['word'].strip()} as {g['say'].strip()}" for g in used) + ".") if used else "",
+            "chars": len(text), "lines": [{"id": ln["id"], "say": say} for ln, say in zip(lines, says)], "warnings": warnings}
 
 
 def _spread(words: list, start: float, end: float) -> list:
@@ -658,7 +786,7 @@ def script_words(placed: list, asr=None) -> list:
 def _line_words(ln: dict, asr) -> list:
     """One placed line's words, timed from the recognised words inside it, else spread."""
     import difflib
-    words = ln["text"].split()
+    words = TAG.sub(" ", ln["text"]).split()  # a tag such as <sigh> is not a word
     heard = [w for w in (asr or []) if ln["at"] - 0.05 <= w["start"] < ln["end"] + 0.05]
     if not heard:
         return _spread(words, ln["at"], ln["end"])
@@ -688,11 +816,21 @@ def _line_words(ln: dict, asr) -> list:
 
 
 # Tightening a voice line: generated speech carries silence at its ends and long pauses between words.
-MAX_PAUSE = 0.28
+KEEP_PAUSE = 0.6  # a pause inside a line kept as said up to this (the rest is cut)
+SHRINK_PAUSE = 0.3  # what the fit cuts a line's inner pauses to when the next beat needs room
+EDGE_PAD = 0.06  # quiet kept before the first sound and after the last
 TEMPO_RANGE = (0.9, 1.15)  # a gentle tempo change; past it the voice sounds processed
+# Fitting the voice to the video's beats: a line lands 0 to 0.12 s after its beat (ITU-R BT.1359: sound is
+# noticed 45 ms early or 125 ms late), never early.
+FIT_TOLERANCE = 0.12
+MIN_LINE_GAP = 0.12  # the least silence between two placed lines
+FIT_TEMPO_MAX = 1.06
+TEMPO_STEP = 0.01
+RUN_TOGETHER = 0.08  # two lines with less silence between them in a take are one piece
+END_ROOM = 0.3  # the voice ends at least this long before the video does
 
 
-def keep_spans(levels: list, floor: float, max_pause=MAX_PAUSE, pad: float = 0.06, hop: float = edit_core.LEVEL_HOP) -> list:
+def keep_spans(levels: list, floor: float, max_pause=KEEP_PAUSE, pad: float = EDGE_PAD, hop: float = edit_core.LEVEL_HOP) -> list:
     """[(start, end)] seconds of a line to keep, from its level per `hop` (video-edit's levels_db) and the level
     under which a frame is quiet (its quiet_floor): the quiet before the first sound and after the last trimmed
     to `pad`, and each pause inside longer than `max_pause` cut to `max_pause` (half kept on each side, so words
@@ -715,6 +853,227 @@ def keep_spans(levels: list, floor: float, max_pause=MAX_PAUSE, pad: float = 0.0
         k = j
     spans.append((start, min(len(levels) * hop, (last + 1) * hop + pad)))
     return [(round(a, 3), round(b, 3)) for a, b in spans]
+
+
+def _kept_before(spans: list, t: float) -> float:
+    """Seconds of kept audio before time `t` (a time inside a cut counts as the cut's end)."""
+    out = 0.0
+    for a, b in spans:
+        if t <= a:
+            return out
+        if t < b:
+            return out + t - a
+        out += b - a
+    return out
+
+
+def measure_segment(levels: list, floor: float, word_starts: list, max_pause, hop: float = edit_core.LEVEL_HOP) -> dict:
+    """One piece of voice (a line file, or a take's slice; times from its start): {spans, length, lead,
+    shrinkable, shrunk_spans, leads, leads_shrunk}. spans: what keep_spans keeps; length: their total; lead: the
+    first word's start in the kept audio (the first sound when no word starts are given); shrinkable: the seconds
+    saved when the inner pauses are cut to SHRINK_PAUSE (shrunk_spans); leads / leads_shrunk: each word start's
+    place in the kept and in the shrunk audio."""
+    spans = keep_spans(levels, floor, max_pause, EDGE_PAD, hop)
+    shrink_to = SHRINK_PAUSE if max_pause is None else min(max_pause, SHRINK_PAUSE)
+    shrunk = keep_spans(levels, floor, shrink_to, EDGE_PAD, hop)
+    length = sum(b - a for a, b in spans)
+    starts = list(word_starts)
+    if not starts and spans:
+        starts = [next(k for k, level in enumerate(levels) if level >= floor) * hop]
+    leads = [_kept_before(spans, t) for t in starts]
+    return {"spans": spans, "length": round(length, 3), "lead": round(leads[0], 3) if leads else 0.0,
+            "shrinkable": round(max(0.0, length - sum(b - a for a, b in shrunk)), 3), "shrunk_spans": shrunk,
+            "leads": [round(x, 3) for x in leads], "leads_shrunk": [round(_kept_before(shrunk, t), 3) for t in starts]}
+
+
+def _place(segments: list, targets: dict, gap: float, lead_in: float, tempo: float, shrunk: set) -> list:
+    """Each segment placed once at `tempo`: [{at, end, lines: [{id, at, end, target, lands, late, shrunk}]}]."""
+    out, prev_end = [], None
+    for s, seg in enumerate(segments):
+        ids, cut = list(seg["ids"]), s in shrunk
+        lead = seg.get("lead_shrunk", seg.get("lead", 0.0)) if cut else seg.get("lead", 0.0)
+        later = seg.get("later") or {}
+        offsets = [lead] + [later[i][1 if cut else 0] if i in later else lead for i in ids[1:]]
+        target = targets.get(ids[0])
+        if target is None:
+            at = lead_in if prev_end is None else prev_end + gap
+            # a later line of the piece with a beat still never lands early
+            at = max([at] + [targets[i] - off / tempo for i, off in zip(ids[1:], offsets[1:]) if targets.get(i) is not None])
+        else:
+            at = max(target - lead / tempo, 0.0 if prev_end is None else prev_end + MIN_LINE_GAP)
+        end = at + (seg["length"] - (seg.get("shrinkable", 0.0) if cut else 0.0)) / tempo
+        lands = [at + off / tempo for off in offsets]
+        lines = []
+        for k, i in enumerate(ids):
+            t = targets.get(i)
+            lines.append({"id": i, "at": at if k == 0 else lands[k], "end": lands[k + 1] if k + 1 < len(ids) else end,
+                          "target": t, "lands": lands[k], "late": None if t is None else lands[k] - t, "shrunk": cut})
+        out.append({"at": at, "end": end, "lines": lines})
+        prev_end = end
+    return out
+
+
+def _line_misses(placed: list) -> list:
+    misses = []
+    for seg in placed:
+        first = seg["lines"][0]["id"]
+        for k, ln in enumerate(seg["lines"]):
+            late = ln["late"]
+            if late is None or (late <= FIT_TOLERANCE and (k == 0 or late >= -1e-6)):
+                continue
+            why = f"lands {late:.2f} s after its beat" if late > 0 else f"lands {-late:.2f} s before its beat"
+            misses.append({"id": ln["id"], "late": round(late, 3),
+                           "why": why if k == 0 else f"{why}: it ran together with {first} in the take"})
+    return misses
+
+
+def fit(segments: list, targets: dict, duration: float, gap: float = 0.25, lead_in: float = 0.3, base_tempo: float = 1.0) -> dict:
+    """The voice fitted to the video: each segment ({ids, length, lead, shrinkable, lead_shrunk?, later?}; `later` maps a
+    run-together line to its [lead, lead when shrunk]) placed so its first word lands on its line's beat
+    (`targets`, id to seconds), never early and never closer than MIN_LINE_GAP to the piece before; a line with
+    no beat follows `gap` after the one before (the first at `lead_in`). A line more than FIT_TOLERANCE late
+    first has the inner pauses of the piece before it shrunk, then the tempo rises by TEMPO_STEP up to
+    max(base_tempo, FIT_TEMPO_MAX). {tempo, lines: [{id, at, end, target, lands, late, shrunk}], misses:
+    [{id, late, why}]}; a voice ending past `duration` - END_ROOM adds a `duration` miss. Never cuts speech."""
+    if not segments:
+        raise ValueError("no lines to fit")
+    cap, tempo, shrunk = max(base_tempo, FIT_TEMPO_MAX), base_tempo, set()
+    while True:
+        placed = _place(segments, targets, gap, lead_in, tempo, shrunk)
+        misses = _line_misses(placed)
+        fix = next((s for s, seg in enumerate(placed) if s and s - 1 not in shrunk
+                    and segments[s - 1].get("shrinkable", 0.0) > 0 and (seg["lines"][0]["late"] or 0) > FIT_TOLERANCE), None)
+        if fix is not None:
+            shrunk.add(fix - 1)
+        elif any(m["late"] > FIT_TOLERANCE for m in misses) and tempo < cap - 1e-9:  # speed helps only a late line
+            tempo = round(min(cap, tempo + TEMPO_STEP), 6)
+        else:
+            break
+    lines = [ln for seg in placed for ln in seg["lines"]]
+    end = placed[-1]["end"]
+    if duration and end > duration - END_ROOM:
+        misses.append({"id": "duration", "late": round(end - (duration - END_ROOM), 3),
+                       "why": f"the voice ends at {end:.2f} s, under {END_ROOM:g} s before the video's end: set "
+                              f"cues.json duration to {round(end + 0.5, 2):g} or more"})
+    return {"tempo": tempo, "lines": lines, "misses": misses}
+
+
+def map_time(spans: list, seg_at: float, tempo: float, t: float) -> float:
+    """Where take time `t` plays in the video: its segment's kept spans (take seconds) placed at `seg_at` at
+    `tempo`. A time inside a cut pause maps to the cut's end."""
+    return seg_at + _kept_before(spans, t) / tempo
+
+
+def _owners(script: list, heard_norms: list) -> list:
+    """For each heard word, the index of the script word it was matched to (difflib; a replaced run shares its
+    script words by position), None for a word the script does not have."""
+    import difflib
+    owner = [None] * len(heard_norms)
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, script, heard_norms, autojunk=False).get_opcodes():
+        if op in ("equal", "replace"):
+            for j in range(j1, j2):
+                owner[j] = i1 + (j - j1) * (i2 - i1) // (j2 - j1)
+    return owner
+
+
+def _words(text: str) -> list:
+    return [w for w in TAG.sub(" ", text).split() if _norm(w)]
+
+
+def align_take(lines: list, heard: list) -> tuple:
+    """(spans, problems): each line of the take ({id, say}, as spoken) found in the recognised words
+    ([{text, start, end}]): [{id, start, end, words}] in take seconds. A heard word the script does not have
+    joins the nearer line in time. A line none of whose words was heard is a problem."""
+    line_of, script = [], []
+    for k, ln in enumerate(lines):
+        for w in _words(ln["say"]):
+            script.append(_norm(w))
+            line_of.append(k)
+    heard = [w for w in heard or [] if isinstance(w, dict) and _norm(str(w.get("text", "")))]
+    owner = [None if i is None else line_of[i] for i in _owners(script, [_norm(w["text"]) for w in heard])]
+    matched = list(owner)
+    for j in range(len(heard)):
+        if owner[j] is not None:
+            continue
+        before = next((i for i in range(j - 1, -1, -1) if owner[i] is not None), None)
+        after = next((i for i in range(j + 1, len(heard)) if matched[i] is not None), None)
+        if before is not None and (after is None or heard[j]["start"] - heard[before]["end"]
+                                   <= heard[after]["start"] - heard[j]["end"]):
+            owner[j] = owner[before]
+        elif after is not None:
+            owner[j] = matched[after]
+    spans, problems = [], []
+    for k, ln in enumerate(lines):
+        words = [w for w, o in zip(heard, owner) if o == k]
+        if not words:
+            problems.append(f"line {ln['id']} is not in the take (no word of it was recognised): the take may have "
+                            "skipped it; remake")
+            continue
+        spans.append({"id": ln["id"], "start": min(w["start"] for w in words), "end": max(w["end"] for w in words),
+                      "words": [{"text": w["text"], "start": w["start"], "end": w["end"]} for w in words]})
+    return spans, problems
+
+
+def take_segments(spans: list, take_seconds: float) -> tuple:
+    """(segments, run_together): the take cut at the middle of the silence between each two lines,
+    [{ids, src_start, src_end}] in take seconds; two lines less than RUN_TOGETHER apart stay one piece (listed
+    in run_together as (id, next id))."""
+    groups, run_together = [[spans[0]]], []
+    for a, b in zip(spans, spans[1:]):
+        if b["start"] - a["end"] < RUN_TOGETHER:
+            groups[-1].append(b)
+            run_together.append((a["id"], b["id"]))
+        else:
+            groups.append([b])
+    bounds = [0.0] + [(g[-1]["end"] + h[0]["start"]) / 2 for g, h in zip(groups, groups[1:])] + [take_seconds]
+    return [{"ids": [s["id"] for s in g], "src_start": round(bounds[k], 3), "src_end": round(bounds[k + 1], 3)}
+            for k, g in enumerate(groups)], run_together
+
+
+def brand_misses(lines: list, heard_by_line: dict, guide: list) -> list:
+    """Each guide word the script says ({id, text} lines) that was heard as neither the word nor its `say`
+    (compared without case, punctuation, hyphens or spaces): [{line, word, heard}] ("" when nothing was heard
+    in its place)."""
+    pattern, out = _guide_pattern(guide), []
+    if pattern is None:
+        return out
+    by_word = {g["word"].strip().lower(): g for g in guide}
+    for ln in lines:
+        tokens = [m for m in re.finditer(r"\S+", ln["text"]) if _norm(m.group())]
+        heard = [w for w in heard_by_line.get(ln["id"]) or [] if _norm(str(w.get("text", "")))]
+        owner = _owners([_norm(m.group()) for m in tokens], [_norm(w["text"]) for w in heard])
+        for m in pattern.finditer(ln["text"]):
+            g = by_word[m.group(1).lower()]
+            idx = {k for k, t in enumerate(tokens) if t.start() < m.end() and m.start() < t.end()}
+            said = " ".join(w["text"] for w, o in zip(heard, owner) if o in idx)
+            if not any(form and form in _norm(said) for form in (_norm(g["word"]), _norm(g["say"]))):
+                out.append({"line": ln["id"], "word": g["word"].strip(), "heard": said})
+    return out
+
+
+def remake_advice(fitted: dict, run_together: list, heard_wrong: list) -> dict:
+    """{advised, fixes}: plain fixes for the script from the fit's misses, the lines that ran together and the
+    brand words heard wrong. A remake is advised for a missed beat or a misheard word, not for the length."""
+    order = [ln["id"] for ln in fitted["lines"]]
+    joined = {b: a for a, b in run_together}
+    fixes, advised = [], bool(heard_wrong)
+    for miss in fitted["misses"]:
+        i = miss["id"]
+        if i == "duration":
+            fixes.append(miss["why"])
+            continue
+        advised = True
+        k = order.index(i)
+        if i in joined:
+            fixes.append(f"add `<short pause>` between {joined[i]} and {i}: they ran together in the take")
+        elif k == 0:
+            fixes.append(f"{i} lands {miss['late']:.2f} s late: move its beat later")
+        else:
+            fixes.append(f"{order[k - 1]} runs {miss['late']:.1f} s past {i}'s beat: cut about "
+                         f"{max(1, math.ceil(miss['late'] * SPEECH_CPS))} characters from {order[k - 1]} or move the beat")
+    fixes += [f"{w['word']} heard as {w['heard'] or 'nothing'} in {w['line']}: respell it (kit.py script --respell, "
+              "or a say for that line)" for w in heard_wrong]
+    return {"advised": advised, "fixes": fixes}
 
 
 def fade_edges(samples, rate: int, seconds: float = 0.008) -> None:

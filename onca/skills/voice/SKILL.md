@@ -38,7 +38,7 @@ PY scripts/say.py --text "..." --out voice-out --prefix line1 --ref founder-voic
 
 The second line is the founder's own voice. On Windows without `--ref`, `--voice af_heart` (the default) and `--speed 1.0` pick Kokoro's voice and pace (speed 0.5 to 2.0).
 
-- Write product names as they are said, in a phonetic spelling (for example `Acme` as `Ak-mee`), and read the output names back to check.
+- Write product names as they are said, in a phonetic spelling (the brand kit's `pronunciations`, for example `Acme` as `Ak-mee`), and read the output names back to check.
 - `--exaggeration 0.5` (Chatterbox only) is the start value; raise it toward 0.7 for more energy, lower it toward 0.3 for calm. Keep 0 to 1.
 - One WAV per call (`voice-out/<prefix>.wav`). Make one line per scene, so each can be timed to its scene.
 - A long demo's storyboard in one go: `PY scripts/say.py --storyboard demo.json --out voice` speaks every scene's `say` into `voice/<scene id>.wav` (blank lines skipped), the files the `screen-demo` skill's `demo.py` reads. `--ref` works the same way for the founder's own voice.
@@ -49,14 +49,22 @@ Onca makes the speech on its own account and charges Onca credits; the founder a
 
 1. `list_voices` shows the 30 voices, the narrator, the free samples left today, the price and the tags.
 2. `sample_voices(text, voices?, gender?, style?)` plays one line (up to 200 characters, ideally from the script) in up to 6 voices, free (a day allows a set number of new sample files, `samples_left_today`; a repeat of the same voice, style and line is served again at no cost). Open `listen_at` (the Brand kit page, where the founder plays each voice and picks one) in the founder's browser; the pick is the brand kit's `narrator` (`get_brand_kit`). A pick the founder gives in words is saved with `update_brand_kit(narrator={voice, style})`.
-3. `make_voiceover(lines, voice?, style?)`: one `{id, text}` per scene (ids lowercase; for a `screen-demo` storyboard, the scene ids, so `demo.py` finds `voice/<scene id>.wav`), voice and style default to the narrator's. `dry_run: true` shows the cost first. The founder approves in a form, or on the Onca page the result names (`approve_at`, open for 1 hour); then call again with the `approval_id` it gave and the same lines, voice and style (any change is a new voiceover the founder approves again). Onca makes an approved voiceover once.
+3. `make_voiceover(lines, voice?, style?)`: for a video, one take (below); otherwise one `{id, text}` per scene (ids lowercase; for a `screen-demo` storyboard, the scene ids, so `demo.py` finds `voice/<scene id>.wav`), voice and style default to the narrator's. `dry_run: true` shows the cost first. The founder approves in a form, or on the Onca page the result names (`approve_at`, open for 1 hour); then call again with the `approval_id` it gave and the same lines, voice and style (any change is a new voiceover the founder approves again). Onca makes an approved voiceover once.
 4. The result's `download` line saves every line as `voice/{line id}.wav`: run it in the video's folder (for a storyboard, the folder `demo.py` runs in). The lines are in the founder's Library too.
 
 - The text is read word for word. Delivery goes in `style` (for example "warm, confident, a little excited"), never in the text.
 - Tags in the text mark a moment: `<laugh>`, `<short pause>` and the others `list_voices` lists. Use them sparingly.
-- Write product names as they are said, like the local voice.
+- Brand words: save how each is said in the brand kit, `update_brand_kit(pronunciations=[{word: "Acme", say: "Ak-mee"}])` (up to 20). For Onca voice, say it in the style line ("Say Acme as Ak-mee."); the respelling in the text is the fix when the check still hears the word wrong. The local voice always gets the respelling in its text.
 - A call takes at most 60 lines and 20,000 characters (a line at most 10,000); a longer script goes in several calls, each approved by the founder.
 - Never call `make_voiceover` for a script the founder has not seen: it asks them to spend credits.
+
+### A video's narration: one take
+
+The video comes first, and its narration is ONE take: one `make_voiceover` line holding the whole script in order, a line a row, with `<short pause>` or `<long pause>` between lines where the video leaves a gap. These two are the only pause tags; Google gives them no lengths, so the kit measures the take and sets every gap itself. Never put two tags side by side.
+
+- The `motion-kit` skill's `kit.py script` writes that text from the video's beats, and `kit.py voice --take` fits the take to the video (it moves only the silences, never a word).
+- Keep a video's script under 3,000 characters: a longer take is made in parts, which can shift the voice slightly between them.
+- At most one remake per video, for a missed beat or a brand word heard wrong (`voice-fit.json`), and only after the founder approves its new cost; more only if the founder asks. Free samples need no ask.
 
 ## Listen and place
 
