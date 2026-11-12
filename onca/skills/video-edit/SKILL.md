@@ -138,6 +138,7 @@ Measured on an Apple M4 (`python3 $S/speed.py RAW.mp4 --out speed.md --long LONG
 
 - Pure (no files, no subprocesses): `core.py` (parsers, the cut, re-timing, caption groups, diffs, reframes), `map_core.py` (the video map), `cut_core.py` (fast-cut planning and its check), `timeline_core.py` (validation, the ffmpeg graphs, caption states), `providers.py` (provider config), `compose.py` (caption HTML).
 - `shell.py`: the subprocess calls.
+- Motion graphics, sound effects and a music bed for a code-made video: the `motion-kit` skill.
 - One job each: `transcribe.py`, `map.py`, `edl.py`, `cut.py`, `audio.py`, `timeline.py`, `render.py`, `captions.py`, `verify.py`, `speed.py`.
 
 ## Limits

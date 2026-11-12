@@ -24,3 +24,18 @@ Credits for tools and ideas the video-edit skill uses but does not bundle:
   transcript for planning, word-boundary cuts with short padding, short fades at every cut, and output-timeline
   offsets for captions.
 - FFmpeg (LGPL / GPL, installed by the founder) does every cut, mix and encode.
+
+Files bundled in skills/motion-kit/assets/ (each file's source, author, licence link and retrieval date are
+listed in skills/motion-kit/assets/LICENSES.json):
+
+- DM Serif Display (Adobe; Google LLC) and Caveat (The Caveat Project Authors): SIL Open Font License 1.1, full
+  texts in skills/motion-kit/assets/fonts/OFL-DMSerifDisplay.txt and OFL-Caveat.txt.
+- Sound effects from Kenney's Interface Sounds, UI Audio, Impact Sounds and Sci-fi Sounds (https://kenney.nl,
+  CC0 1.0, its License.txt in skills/motion-kit/assets/sfx/) and from the OpenGameArt pages "Air Whoosh"
+  (pyranostudios) and "Swishes Sound Pack" (artisticdude), both CC0 1.0; trimmed and level-matched by Onca.
+- Paper textures Paper001, Paper002, Paper003 and Paper006 from ambientCG (https://ambientcg.com, CC0 1.0),
+  converted to greyscale and resized by Onca.
+- The props (skills/motion-kit/assets/props/) are drawn by Onca and released under CC0 1.0.
+
+The motion-kit cut-out tool runs Apple's Vision framework on the founder's Mac, or rembg (MIT) with the
+isnet-general-use model (Apache 2.0), which the founder's own uv downloads; neither is bundled here.

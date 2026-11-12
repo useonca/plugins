@@ -6,7 +6,7 @@ The Onca plugin for Claude Code, Codex and Claude Desktop, from Onca (https://us
 |--------|--------------|
 | `onca` | Onca's tools (the hosted MCP) and free product videos from your product's real UI: the Onca method, local rendering, a video editor and local narration. |
 
-Install in Claude Code: `claude plugin marketplace add useonca/plugins`, then `claude plugin install onca@onca`.
+Install in Claude Code: `claude plugin marketplace add useonca/plugins`, then `claude plugin install onca@onca`, then turn on auto-update (`/plugin`, Marketplaces, onca, Enable auto-update) so it stays current.
 Install in Codex: `codex plugin marketplace add useonca/plugins`, then `codex plugin add onca@onca`.
 In Claude Desktop: Customize, Plugins, add the marketplace `useonca/plugins`, Discover, Install, then connect Onca in the plugin's Connectors tab.
 

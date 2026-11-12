@@ -13,6 +13,7 @@ Everything renders locally and costs nothing. The engine is HyperFrames (HTML re
 - Never run the engine's `cloud` commands, `lambda`, `cloudrun`, `publish`, `render --cloud` or anything else that uploads, spends or needs an account. A render here is always local. Skip the engine's `usage` step (it reports a cloud plan, which a local render does not use).
 - Before the first video of a session: `python3 scripts/doctor.py check`. Each missing item prints its install command (`brew install node@22`, `brew install ffmpeg`, `brew install uv`, `uv tool install parakeet-mlx`, `uv tool install scenedetect`, `uv tool install mlx-audio`, `uv tool install demucs-mlx`). Show the founder what is missing and the commands, and run them only after their yes. `mlx_audio.tts.generate` is only needed for narration (the `voice` skill), `demucs-mlx` only for voice separation (`video-edit`'s `audio.py separate`).
 - Before every render: `sh "$ENGINE" check --json` in the project folder; fix every error and weigh every warning.
+- A composition built from the `motion-kit` skill's parts renders through this route like any other; its sound effects are mixed afterwards by that skill.
 
 ## The render contract
 

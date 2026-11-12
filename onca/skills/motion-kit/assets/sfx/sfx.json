@@ -1,0 +1,126 @@
+{
+ "whoosh": [
+  {
+   "file": "whoosh-1.wav",
+   "peak": 0.4566,
+   "dur": 0.95
+  },
+  {
+   "file": "whoosh-2.wav",
+   "peak": 0.5319,
+   "dur": 1.0
+  },
+  {
+   "file": "whoosh-3.wav",
+   "peak": 0.5507,
+   "dur": 1.0
+  }
+ ],
+ "whoosh-short": [
+  {
+   "file": "whoosh-short-1.wav",
+   "peak": 0.0784,
+   "dur": 0.1969
+  },
+  {
+   "file": "whoosh-short-2.wav",
+   "peak": 0.0693,
+   "dur": 0.1459
+  }
+ ],
+ "pop": [
+  {
+   "file": "pop-1.wav",
+   "peak": 0.0018,
+   "dur": 0.1118
+  },
+  {
+   "file": "pop-2.wav",
+   "peak": 0.0006,
+   "dur": 0.1814
+  },
+  {
+   "file": "pop-3.wav",
+   "peak": 0.0005,
+   "dur": 0.2017
+  }
+ ],
+ "tick": [
+  {
+   "file": "tick-1.wav",
+   "peak": 0.0006,
+   "dur": 0.045
+  },
+  {
+   "file": "tick-2.wav",
+   "peak": 0.0006,
+   "dur": 0.0232
+  }
+ ],
+ "key": [
+  {
+   "file": "key-1.wav",
+   "peak": 0.0282,
+   "dur": 0.0885
+  },
+  {
+   "file": "key-2.wav",
+   "peak": 0.0193,
+   "dur": 0.103
+  }
+ ],
+ "typing": [
+  {
+   "file": "typing.wav",
+   "peak": 0.7082,
+   "dur": 1.28
+  }
+ ],
+ "sent": [
+  {
+   "file": "sent.wav",
+   "peak": 0.3686,
+   "dur": 0.4281
+  }
+ ],
+ "received": [
+  {
+   "file": "received.wav",
+   "peak": 0.0007,
+   "dur": 0.2946
+  }
+ ],
+ "notification": [
+  {
+   "file": "notification.wav",
+   "peak": 0.1679,
+   "dur": 0.5007
+  }
+ ],
+ "tap": [
+  {
+   "file": "tap-1.wav",
+   "peak": 0.0048,
+   "dur": 0.1151
+  },
+  {
+   "file": "tap-2.wav",
+   "peak": 0.0053,
+   "dur": 0.1804
+  }
+ ],
+ "riser": [
+  {
+   "file": "riser.wav",
+   "peak": 1.7722,
+   "dur": 2.0001
+  }
+ ],
+ "impact": [
+  {
+   "file": "impact.wav",
+   "peak": 0.0827,
+   "dur": 1.0001
+  }
+ ]
+}

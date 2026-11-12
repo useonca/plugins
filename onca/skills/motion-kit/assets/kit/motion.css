@@ -1,0 +1,91 @@
+/* Onca motion kit styles. Colours and fonts come from brand.css (--om-*); motion.js sets every moving value.
+ * The bundled fonts (OFL) are declared here; a brand font file goes in brand.json's font_files. */
+@font-face { font-family: "DM Serif Display"; src: url("fonts/DMSerifDisplay-Regular.ttf"); font-display: block; }
+@font-face { font-family: "Caveat"; src: url("fonts/Caveat.ttf"); font-weight: 400 700; font-display: block; }
+
+:root {
+  --om-ink: #151412; --om-paper: #F6F1E7; --om-accent: #D99A0E; --om-accent-ink: #151412; --om-muted: #8A8378;
+  --om-display: "Inter", Georgia, serif; --om-body: "Inter", system-ui, sans-serif; --om-label: "DM Serif Display", Georgia, serif;
+}
+
+.om-title { font-family: var(--om-display); color: var(--om-ink); font-size: 120px; line-height: 1.02; letter-spacing: -0.02em; }
+.om-body { font-family: var(--om-body); color: var(--om-ink); font-size: 44px; line-height: 1.25; }
+.om-hand { font-family: "Caveat", cursive; }
+.om-w, .om-cw { display: inline-block; will-change: transform, opacity, filter; }
+
+/* highlight: a box with corner handles, an ellipse drawn round, or a marker swipe behind the words */
+.om-highlight { position: absolute; box-sizing: border-box; pointer-events: none; }
+.om-highlight[data-style="box"] { border: 4px solid var(--om-accent); background: color-mix(in srgb, var(--om-accent) 14%, transparent); }
+.om-highlight[data-style="marker"] { background: var(--om-accent); mix-blend-mode: multiply; border-radius: 6px; }
+.om-highlight[data-style="ellipse"] svg { position: absolute; inset: -6%; width: 112%; height: 112%; overflow: visible; }
+.om-highlight ellipse { fill: none; stroke: var(--om-accent); stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.om-handle { position: absolute; width: 16px; height: 16px; background: var(--om-paper); border: 4px solid var(--om-accent); box-sizing: border-box; transform: scale(0); }
+.om-handle:nth-child(1) { left: -10px; top: -10px; }
+.om-handle:nth-child(2) { right: -10px; top: -10px; }
+.om-handle:nth-child(3) { left: -10px; bottom: -10px; }
+.om-handle:nth-child(4) { right: -10px; bottom: -10px; }
+
+/* captions: a few words at a time, the spoken one lit */
+.om-caption { font-family: var(--om-body); font-weight: 800; font-size: 64px; line-height: 1.1; text-align: center; color: var(--om-paper); }
+.om-caption[data-style="box"] .om-cw { background: var(--om-ink); padding: 4px 14px; border-radius: 12px; margin: 4px 2px; }
+.om-caption[data-style="plain"] { text-shadow: 0 3px 12px rgba(0,0,0,.55); }
+.om-caption .om-on { color: var(--om-accent); }
+
+/* odometer: digit strips in a 1em window, optional tiles */
+.om-odometer { display: inline-flex; align-items: flex-end; font-variant-numeric: tabular-nums; line-height: 1; }
+.om-col { display: inline-block; height: 1em; overflow: hidden; }
+.om-strip { display: flex; flex-direction: column; will-change: transform; }
+.om-strip b { display: block; height: 1em; line-height: 1; font-weight: inherit; text-align: center; }
+.om-tiles .om-col { background: var(--om-ink); padding: 0 0.08em; margin: 0 0.04em; border-radius: 0.12em; }
+.om-tiles .om-strip b { background: var(--om-ink); color: var(--om-paper); }  /* each digit carries its tile, also mid-roll */
+
+/* card grid: a tilted plane of cards; --om-tint lights a card as the wave passes */
+.om-grid { display: grid; grid-template-columns: repeat(var(--om-cols, 5), 1fr); gap: 18px; transform-style: preserve-3d; }
+.om-card { aspect-ratio: 3 / 4; border-radius: 18px; overflow: hidden; transform-style: preserve-3d;
+  background: color-mix(in srgb, var(--om-accent) calc(var(--om-tint, 0) * 60%), var(--om-paper));
+  box-shadow: 0 calc(6px + var(--om-tint, 0) * 30px) calc(14px + var(--om-tint, 0) * 30px) rgba(0,0,0,.25); }
+.om-card > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* chart: a line (svg, drawn by its dash) and a dot, or bars */
+.om-chart { position: relative; }
+.om-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.om-chart polyline { fill: none; stroke: var(--om-accent); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.om-dot { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--om-accent); box-shadow: 0 0 0 8px color-mix(in srgb, var(--om-accent) 30%, transparent); }
+.om-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 6%; }
+.om-bar { flex: 1; height: 100%; background: var(--om-accent); border-radius: 12px 12px 0 0; transform-origin: bottom; transform: scaleY(0); }
+.om-chart-label { position: absolute; left: 0; top: -1.6em; font-family: var(--om-body); font-weight: 700; font-size: 40px; color: var(--om-ink); }
+
+/* spotlight: a full-frame stage; motion.js paints the cone and the ground */
+.om-spotlight { position: absolute; inset: 0; }
+
+/* bubble: a chat message with typing dots and a tail */
+.om-bubble { display: inline-block; max-width: 74%; padding: 26px 34px; border-radius: 44px; font-family: var(--om-body); font-size: 44px; line-height: 1.25; transform-origin: bottom left; position: relative; }
+.om-bubble[data-side="in"] { background: #E9E9EB; color: #111; border-bottom-left-radius: 12px; }
+.om-bubble[data-side="out"] { background: var(--om-accent); color: var(--om-accent-ink); border-bottom-right-radius: 12px; transform-origin: bottom right; }
+.om-dots { display: inline-flex; gap: 10px; padding: 8px 0; }
+.om-dots i { width: 16px; height: 16px; border-radius: 50%; background: currentColor; opacity: .45; }
+.om-text > span { display: inline-block; white-space: pre; }
+
+/* morph: one container that changes shape; its children are the shown states */
+.om-morph { position: absolute; overflow: hidden; transform-origin: center; }
+
+/* paper, torn labels and props */
+.om-paper { position: absolute; inset: 0; background-color: var(--om-paper); background-size: 1024px; background-blend-mode: multiply; }
+.om-paper[data-paper="white"] { background-image: url("paper/white.jpg"); }
+.om-paper[data-paper="kraft"] { background-image: url("paper/kraft.jpg"); background-color: color-mix(in srgb, #B98E5A 70%, var(--om-paper)); }
+.om-paper[data-paper="card"] { background-image: url("paper/card.jpg"); }
+.om-paper[data-paper="crumpled"] { background-image: url("paper/crumpled.jpg"); }
+.om-torn { display: inline-block; background: var(--om-paper); color: var(--om-ink); font-family: var(--om-label); padding: 18px 32px; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.om-sticky { position: absolute; width: 360px; height: 360px; padding: 40px; box-sizing: border-box; background: url("props/sticky-note.svg") center / 100% 100% no-repeat; font-family: "Caveat", cursive; font-size: 54px; color: #2A2620; }
+.om-polaroid { position: absolute; width: 420px; padding: 22px 22px 88px; box-sizing: border-box; background: #FBFAF6; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+.om-polaroid > img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.om-prop { position: absolute; display: block; pointer-events: none; }
+
+/* scenes: full-frame, stacked in page order (a later scene above); a scene part brings each one in */
+.om-scene { position: absolute; inset: 0; overflow: hidden; }
+
+/* product UI as a collage cut-out: a crisp screenshot (kit.py shot, 3x) shown at a third of its pixels, on a
+   white die-cut edge with a paper shadow */
+.om-cutout { position: absolute; display: block; padding: 14px; background: #FFFFFF; border-radius: 10px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 14px 32px rgba(0,0,0,.22); }
+.om-cutout > img { display: block; width: 100%; height: auto; border-radius: 6px; }

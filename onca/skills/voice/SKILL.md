@@ -5,7 +5,7 @@ description: Narration for a launch video, three ways the founder picks from - t
 
 # Voice
 
-Three ways to narrate. Offer all three and let the founder pick; none is pushed first.
+Three ways to narrate. **Ask which voice, every video, before any voiceover.** Price the script first with `make_voiceover(lines, dry_run: true)` (free), then ask in plain words: "Onca voice sounds much more natural (costs N credits), or the free voice on your computer?" Then open the matching picker, where the founder plays each voice and clicks one; never list voices in chat. Onca voice: `sample_voices` (free) with a line of the script, open its `listen_at` page (the Brand kit's Narrator voice card: a grid of voice names, each with a small play button; a click on a name picks it) in the founder's browser, and read the pick back from `get_brand_kit` (`narrator`). The free voice: make a short sample of each local voice, list them in a `choices.json`, and run the `motion-kit` skill's `kit.py pick choices.json --out pick.json`, which opens the same kind of page on the founder's computer (only the names, a play button each, one click picks) and returns the pick.
 
 | Option | Cost | Where it runs | Voices |
 |---|---|---|---|
@@ -45,7 +45,7 @@ python3 scripts/say.py --text "..." --out voice-out --prefix line1 --ref founder
 Onca makes the speech on its own account and charges Onca credits; the founder approves each voiceover with its exact cost before anything is made. Samples are free.
 
 1. `list_voices` shows the 30 voices, the narrator, the free samples left today, the price and the tags.
-2. `sample_voices(text, voices?, gender?, style?)` plays one line (up to 200 characters, ideally from the script) in up to 6 voices, free (a day allows a set number of new sample files, `samples_left_today`; a repeat of the same voice, style and line is served again at no cost). Give the founder `listen_at` (the Brand kit page, where they can also pick), or play the files for them. Save the founder's pick with `update_brand_kit(narrator={voice, style})`.
+2. `sample_voices(text, voices?, gender?, style?)` plays one line (up to 200 characters, ideally from the script) in up to 6 voices, free (a day allows a set number of new sample files, `samples_left_today`; a repeat of the same voice, style and line is served again at no cost). Open `listen_at` (the Brand kit page, where the founder plays each voice and picks one) in the founder's browser; the pick is the brand kit's `narrator` (`get_brand_kit`). A pick the founder gives in words is saved with `update_brand_kit(narrator={voice, style})`.
 3. `make_voiceover(lines, voice?, style?)`: one `{id, text}` per scene (ids lowercase; for a `screen-demo` storyboard, the scene ids, so `demo.py` finds `voice/<scene id>.wav`), voice and style default to the narrator's. `dry_run: true` shows the cost first. The founder approves in a form, or on the Onca page the result names (`approve_at`, open for 1 hour); then call again with the `approval_id` it gave and the same lines, voice and style (any change is a new voiceover the founder approves again). Onca makes an approved voiceover once.
 4. The result's `download` line saves every line as `voice/{line id}.wav`: run it in the video's folder (for a storyboard, the folder `demo.py` runs in). The lines are in the founder's Library too.
 
