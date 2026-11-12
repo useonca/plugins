@@ -40,7 +40,7 @@ def parse_size(text: str) -> tuple[int, int]:
 def render(project: Path, out: Path, draft: bool) -> None:
     """`check` (its JSON kept in check.json), then a render of the project to `out`."""
     check = hf(project, "check", "--json", check=False)
-    (project / "check.json").write_text(check.stdout)
+    (project / "check.json").write_text(check.stdout, encoding="utf-8")
     if check.returncode != 0:
         log("the render check reported problems; see check.json (rendering anyway, judge from the frames)")
     hf(project, "render", "--quality", "draft" if draft else "delivery", "--output", str(Path(out).resolve()))

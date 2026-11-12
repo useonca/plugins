@@ -53,11 +53,11 @@ def main() -> None:
         freezes = core.parse_freezes(log)
         scenes = shell.scenes(a.src, d)
         keyframes = shell.keyframes(a.src, info["start"])
-        words = json.loads(Path(a.words).read_text()) if a.words else []
+        words = json.loads(Path(a.words).read_text(encoding="utf-8")) if a.words else []
         m = map_core.build_map(info, words, silences, scenes, keyframes, freezes, loudness)
         m["sheets"] = sheets(a.src, m["scenes"], d / "sheets")
-    (d / "map.json").write_text(json.dumps(m, indent=1))
-    (d / "map.md").write_text(map_core.map_markdown(m))
+    (d / "map.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
+    (d / "map.md").write_text(map_core.map_markdown(m), encoding="utf-8")
     s = m["stats"]
     shell.log(f"{info['duration']} s {m['size']} @{m['fps']} | {s['words']} words | {len(m['scenes'])} scenes on "
               f"{len(m['sheets'])} sheets | keyframe gap max {s['keyframe_gap_max']} s | I {loudness.get('I')} LUFS -> {d / 'map.md'}")

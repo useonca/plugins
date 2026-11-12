@@ -33,7 +33,7 @@ def output_name(storyboard: Path) -> str:
 def build(a) -> None:
     path = Path(a.storyboard)
     try:
-        sb = json.loads(path.read_text())
+        sb = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         shared.bad_input([f"no storyboard at {path}"])
     except ValueError as e:
@@ -80,13 +80,13 @@ def build(a) -> None:
             shutil.copyfile(base / s["audio"], proj / dst)
             s["audio"] = dst
     cue_list = demo_core.cues(tl)
-    (out / "captions.srt").write_text(demo_core.srt(cue_list))
-    (out / "captions.vtt").write_text(demo_core.vtt(cue_list))
-    (out / "chapters.txt").write_text(demo_core.description(sb["title"], marks))
-    (proj / "timeline.json").write_text(json.dumps(tl, indent=1))
+    (out / "captions.srt").write_text(demo_core.srt(cue_list), encoding="utf-8")
+    (out / "captions.vtt").write_text(demo_core.vtt(cue_list), encoding="utf-8")
+    (out / "chapters.txt").write_text(demo_core.description(sb["title"], marks), encoding="utf-8")
+    (proj / "timeline.json").write_text(json.dumps(tl, indent=1), encoding="utf-8")
     fonts = demo_core.fonts_for(sb)
     (proj / "index.html").write_text(demo_html.index_html(tl, marks, w, h, duration,
-                                                          captions=cue_list if a.burn_captions else None, fonts=fonts))
+                                                          captions=cue_list if a.burn_captions else None, fonts=fonts), encoding="utf-8")
     missing = shared.fonts_loaded(proj / "index.html", [f'700 76px "{fonts["display"]}"', f'400 34px "{fonts["text"]}"'])
     if missing:
         print(f"fonts did not load: {', '.join(missing)} (offline, or a name Google Fonts does not have); "

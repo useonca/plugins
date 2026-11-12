@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Measure how fast each editing route runs on this Mac: stream copy, software and hardware
+"""Measure how fast each editing route runs on this computer: stream copy, software and hardware
 encodes (with picture quality), a 20-cut smart cut against a full re-encode, and voice separation.
 
 usage: speed.py SRC --out speed.md [--seconds 120] [--long LONG.mp4] [--qualities 55,62,70] [--no-separation]
 
 SRC's first --seconds are encoded every way and scored with VMAF against the source (93 or more looks the
 same to a viewer). --long (a 10 minute H.264 source) is cut 20 times by cut.py, smart and fully re-encoded.
-Writes speed.md (the table and the targets) and speed.json. Renders run one at a time: the Mac has one
+Writes speed.md (the table and the targets) and speed.json. Renders run one at a time: a computer has one
 media engine, so two at once take twice as long.
 """
 
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import re
 import shutil
 import sys
@@ -44,6 +45,17 @@ def even_ranges(duration: float, n: int, fps: float, keep: float = 0.8) -> list:
         out.append({"start": s, "end": e, "words": [], "out_start": round(t, 4), "out_end": round(t + e - s, 4)})
         t += e - s
     return out
+
+
+def machine_label(system: str, processor: str, sysctl_out: str) -> str:
+    """The computer's name for the table: the Mac's CPU brand (``sysctl_out``), else ``platform.processor()``,
+    else ``this computer``."""
+    return sysctl_out.strip() or processor.strip() or "this computer"
+
+
+def hardware_rows(usable: frozenset) -> list:
+    """The hardware encoders in ``usable``, as encoder names in ``auto`` order (``videotoolbox``, ``nvenc``, ...)."""
+    return [name for name in tlc.AUTO_ORDER if tlc.NEEDS[name] in usable]
 
 
 def pick_quality(rows: list, floor: float = VMAF_FLOOR) -> dict:
@@ -78,7 +90,7 @@ def targets(rows: dict, picked: dict) -> list:
 
 
 def speed_markdown(machine: str, rows: dict, picked: dict, checks: list) -> str:
-    lines = ["# Editing speed on this Mac", "", machine, "",
+    lines = ["# Editing speed on this computer", "", machine, "",
              "| Route | Time | Realtime | Size | VMAF |", "|---|---|---|---|---|"]
     for name, r in rows.items():
         size = f"{r['mb']:.1f} MB" if r.get("mb") is not None else ""
@@ -122,7 +134,8 @@ def main() -> None:
     a = ap.parse_args()
     info = shell.probe(a.src)
     secs = min(a.seconds, info["duration"])
-    have = shell.encoders()
+    have = shell.usable_encoders()
+    hardware = hardware_rows(have)
     rows: dict = {}
     work = Path(tempfile.mkdtemp(prefix="onca-speed-"))
     base = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-t", str(secs), "-i", a.src]
@@ -132,7 +145,10 @@ def main() -> None:
         for name, enc in (("x264 medium", tlc.ENCODERS["x264"]), ("x264 veryfast", tlc.ENCODERS["x264-fast"])):
             out = work / f"{name.replace(' ', '-')}.mp4"
             rows[name] = row(timed_run(base + enc + ["-an", str(out)]), secs, out, vmaf=vmaf(out, a.src, secs))
-        if "h264_videotoolbox" in have:
+        for name in (n for n in hardware if n != "videotoolbox"):
+            out = work / f"{name}.mp4"
+            rows[name] = row(timed_run(base + tlc.ENCODERS[name] + ["-an", str(out)]), secs, out, vmaf=vmaf(out, a.src, secs))
+        if "videotoolbox" in hardware:
             for q in (int(x) for x in a.qualities.split(",")):
                 out = work / f"vt-{q}.mp4"
                 enc = list(tlc.ENCODERS["videotoolbox"])
@@ -144,10 +160,10 @@ def main() -> None:
             edl = {"source": linfo["path"], "fps": linfo["fps"], "width": linfo["width"], "height": linfo["height"],
                    "duration": linfo["duration"], "ranges": even_ranges(linfo["duration"], 20, linfo["fps"]), "words_out": []}
             kept = tlc.main_length(tlc.from_edl(edl, []))
-            for label, mode, name in (("smart cut 20", "smart", "videotoolbox" if "h264_videotoolbox" in have else "x264-fast"),
+            for label, mode, name in (("smart cut 20", "smart", tlc.pick_encoder("auto", have)),
                                       ("x264 medium cut 20", "encode", "x264"),
                                       ("videotoolbox cut 20", "encode", "videotoolbox")):
-                if name == "videotoolbox" and "h264_videotoolbox" not in have:
+                if name == "videotoolbox" and "videotoolbox" not in hardware:
                     continue
                 with shell.Clock(label) as c:
                     rep = cut.cut(edl, work / f"{mode}-{name}.mp4", mode, name)
@@ -160,12 +176,13 @@ def main() -> None:
                 rows[label] = row(c.seconds, info["duration"])
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    machine = shell.run(["sysctl", "-n", "machdep.cpu.brand_string"], check=False).stdout.strip() or "this Mac"
+    sysctl = shell.run(["sysctl", "-n", "machdep.cpu.brand_string"], check=False).stdout if sys.platform == "darwin" else ""
+    machine = machine_label(platform.system(), platform.processor(), sysctl)
     checks = targets(rows, picked)
-    Path(a.out).write_text(speed_markdown(f"{machine}, ffmpeg encoders: {'VideoToolbox' if 'h264_videotoolbox' in have else 'software only'}; "
+    Path(a.out).write_text(speed_markdown(f"{machine}, ffmpeg encoders: {', '.join(hardware) or 'software only'}; "
                                           f"source {Path(a.src).name} {info['width']}x{info['height']} @{info['fps']}, first {secs:g} s",
-                                          rows, picked, checks))
-    Path(a.out).with_suffix(".json").write_text(json.dumps({"rows": rows, "picked": picked, "targets": checks}, indent=1))
+                                          rows, picked, checks), encoding="utf-8")
+    Path(a.out).with_suffix(".json").write_text(json.dumps({"rows": rows, "picked": picked, "targets": checks}, indent=1), encoding="utf-8")
     shell.log(f"speed table -> {a.out}; " + "; ".join(f"{'met' if c['met'] else 'MISSED'} {c['name']}" for c in checks))
 
 

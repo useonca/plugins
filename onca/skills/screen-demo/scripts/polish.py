@@ -38,7 +38,7 @@ def load_rec(rec: Path) -> dict:
         problems.append(f"{rec}/clicks.json is missing (record.py or flow.py writes it)")
     else:
         try:
-            log = json.loads((rec / "clicks.json").read_text())
+            log = json.loads((rec / "clicks.json").read_text(encoding="utf-8"))
             if not {"viewport", "duration", "events"} <= set(log):
                 problems.append(f"{rec}/clicks.json needs viewport, duration and events")
         except ValueError as e:
@@ -85,8 +85,8 @@ def main(argv: list[str] | None = None) -> None:
     (proj / "assets").mkdir(parents=True, exist_ok=True)
     shutil.copyfile(rec / "raw.mp4", proj / "assets" / "raw.mp4")
     (proj / "index.html").write_text(polish_html.index_html(layout, camera, cursor, clicks, out_w, out_h, duration,
-                                                            background=background, pointer=pointer))
-    (proj / "plan.json").write_text(json.dumps({"zoom": plan, "camera": camera, "cursor": cursor}, indent=1))
+                                                            background=background, pointer=pointer), encoding="utf-8")
+    (proj / "plan.json").write_text(json.dumps({"zoom": plan, "camera": camera, "cursor": cursor}, indent=1), encoding="utf-8")
     shared.log(f"{len(plan)} zoom segments, {len(cursor)} cursor keys, {len(clicks)} presses, {pointer}, {out_w}x{out_h}")
     raw = proj / "render.mp4"
     shared.render(proj, raw, a.draft)

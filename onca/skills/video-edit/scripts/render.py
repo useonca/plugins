@@ -25,9 +25,9 @@ def main() -> None:
     ap.add_argument("--lufs", type=float, default=-16.0)
     ap.add_argument("--focus-x", type=float, default=0.5, help="0..1, where the subject sits when cropping to a narrower frame")
     ap.add_argument("--mode", default="auto", choices=["auto", "crop", "fit"])
-    ap.add_argument("--encoder", default="auto", help="auto, videotoolbox, x264 or x264-fast")
+    ap.add_argument("--encoder", default="auto", help=", ".join(("auto", *tlc.ENCODERS)))
     a = ap.parse_args()
-    edl = json.loads(Path(a.edl).read_text())
+    edl = json.loads(Path(a.edl).read_text(encoding="utf-8"))
     outputs = [{"name": f"cut-{name}", "size": f"{w}x{h}", "focus_x": a.focus_x, "mode": a.mode}
                for w, h, name in core.parse_sizes(a.sizes)]
     tl = tlc.from_edl(edl, outputs)

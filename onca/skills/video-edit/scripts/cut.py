@@ -39,7 +39,7 @@ def smart_video(info: dict, pieces: list, work: Path) -> Path:
     with ThreadPoolExecutor(max(2, min(8, (os.cpu_count() or 4) - 2))) as pool:
         list(pool.map(one, range(len(pieces))))
     lst = work / "pieces.txt"
-    lst.write_text(cut_core.concat_list(paths, [round(round((p["end"] - p["start"]) * info["fps"]) / info["fps"], 6) for p in pieces]))
+    lst.write_text(cut_core.concat_list(paths, [round(round((p["end"] - p["start"]) * info["fps"]) / info["fps"], 6) for p in pieces]), encoding="utf-8")
     return lst
 
 
@@ -63,18 +63,18 @@ def main() -> None:
     ap.add_argument("edl")
     ap.add_argument("--out", required=True)
     ap.add_argument("--mode", default="auto", choices=["auto", "smart", "encode"])
-    ap.add_argument("--encoder", default="auto", help="auto, videotoolbox, x264 or x264-fast")
+    ap.add_argument("--encoder", default="auto", help=", ".join(providers.LOCAL_ENCODERS))
     ap.add_argument("--lufs", type=float, default=-16.0)
     ap.add_argument("--min-copy", type=float, default=2.0, help="copy only stretches between keyframes at least this long")
     ap.add_argument("--providers", help="providers.json: an `encode` provider picks the encoder")
     a = ap.parse_args()
     encoder = providers.resolve("encode", shell.load_providers(a.providers)).get("name", a.encoder)
     try:
-        name = tlc.pick_encoder(encoder, shell.encoders())
+        name = tlc.pick_encoder(encoder, shell.encoders_for(encoder))
     except ValueError as exc:
         print(f"cut: {exc}", file=sys.stderr)
         raise SystemExit(2)
-    report = cut(json.loads(Path(a.edl).read_text()), Path(a.out), a.mode, name, a.lufs, a.min_copy)
+    report = cut(json.loads(Path(a.edl).read_text(encoding="utf-8")), Path(a.out), a.mode, name, a.lufs, a.min_copy)
     shell.log(f"{report['mode']} cut {report['duration']} s -> {report['out']}")
 
 
@@ -138,7 +138,7 @@ def cut(edl: dict, out: Path, mode: str, name: str, lufs: float = -16.0, min_cop
         shutil.rmtree(work, ignore_errors=True)
     report["out"] = str(out)
     report["duration"] = shell.probe(out)["duration"]
-    Path(str(out) + ".cut.json").write_text(json.dumps(report, indent=1))
+    Path(str(out) + ".cut.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     return report
 
 if __name__ == "__main__":

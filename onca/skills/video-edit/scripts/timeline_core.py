@@ -17,10 +17,17 @@ VERSION = 1
 ENCODERS = {
     # Higher -q:v is better for VideoToolbox. speed.py on an M4: q55 VMAF 89, q62 92, q70 94 (x264 medium 95), so q70.
     "videotoolbox": ["-c:v", "h264_videotoolbox", "-q:v", "70", "-profile:v", "high", "-pix_fmt", "yuv420p"],
+    # Windows hardware encoders (settings from ffmpeg's own docs: nvenc preset p5 with vbr and -cq, qsv global_quality
+    # as ICQ, amf cqp); `auto` tries them only after a trial encode proves the GPU works.
+    "nvenc": ["-c:v", "h264_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0", "-profile:v", "high", "-pix_fmt", "yuv420p"],
+    "qsv": ["-c:v", "h264_qsv", "-global_quality", "21", "-preset", "medium", "-profile:v", "high", "-pix_fmt", "yuv420p"],
+    "amf": ["-c:v", "h264_amf", "-quality", "quality", "-rc", "cqp", "-qp_i", "20", "-qp_p", "22", "-profile:v", "high", "-pix_fmt", "yuv420p"],
     "x264": ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p"],
     "x264-fast": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-profile:v", "high", "-pix_fmt", "yuv420p"],
 }
-NEEDS = {"videotoolbox": "h264_videotoolbox", "x264": "libx264", "x264-fast": "libx264"}
+NEEDS = {"videotoolbox": "h264_videotoolbox", "nvenc": "h264_nvenc", "qsv": "h264_qsv", "amf": "h264_amf",
+         "x264": "libx264", "x264-fast": "libx264"}
+AUTO_ORDER = ("videotoolbox", "nvenc", "qsv", "amf")
 LAYOUTS = ("full", "pip", "box")
 CORNERS = ("tl", "tr", "bl", "br")
 FITS = ("cover", "contain")
@@ -48,14 +55,15 @@ def is_image(path: str) -> bool:
 
 
 def pick_encoder(name: str, available: set) -> str:
-    """`auto`: VideoToolbox when this ffmpeg has it, else libx264 veryfast. ValueError for an unknown name
-    or one this ffmpeg cannot run."""
+    """`auto`: the first hardware encoder this computer can use (VideoToolbox, NVENC, QSV, AMF), else libx264
+    veryfast. ValueError for an unknown name or one this computer cannot use (``available`` holds the names that
+    work, see shell.usable_encoders)."""
     if name == "auto":
-        return "videotoolbox" if NEEDS["videotoolbox"] in available else "x264-fast"
+        return next((enc for enc in AUTO_ORDER if NEEDS[enc] in available), "x264-fast")
     if name not in ENCODERS:
         raise ValueError(f"unknown encoder {name}: use auto, {', '.join(ENCODERS)}")
     if NEEDS[name] not in available:
-        raise ValueError(f"encoder {name} needs {NEEDS[name]}, which this ffmpeg does not list")
+        raise ValueError(f"encoder {name} needs {NEEDS[name]}, which this computer cannot use: use auto or x264")
     return name
 
 

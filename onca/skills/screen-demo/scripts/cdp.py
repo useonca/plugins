@@ -9,7 +9,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import ntpath
 import os
+import platform
 import shutil
 import socket
 import subprocess
@@ -19,6 +21,7 @@ import time
 from contextlib import contextmanager
 import urllib.request
 from pathlib import Path
+from typing import Mapping
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -221,9 +224,30 @@ def page_ws_url(port: int) -> str:
     raise ConnectionError(f"no page target on port {port}")
 
 
+def chrome_candidates(plat: str, env: Mapping[str, str]) -> list:
+    """Where a Chrome or Edge may be installed, in the order to try: the macOS apps on a Mac, on Windows Chrome's
+    three install folders (``ProgramFiles``, ``ProgramFiles(x86)``, ``LOCALAPPDATA``) then Edge, which ships with
+    Windows 10 and 11 and is Chromium. A folder whose variable is unset is skipped. Linux: PATH names only."""
+    if plat.startswith("mac"):
+        return list(CHROME_APPS)
+    if not plat.startswith("windows"):
+        return []
+    chrome, edge = ("Google", "Chrome", "Application", "chrome.exe"), ("Microsoft", "Edge", "Application", "msedge.exe")
+    return [ntpath.join(env[var], *parts)
+            for parts, variables in ((chrome, ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA")),
+                                     (edge, ("ProgramFiles(x86)", "ProgramFiles")))
+            for var in variables if env.get(var)]
+
+
+def _platform() -> str:
+    system = platform.system()
+    return "mac" if system == "Darwin" else "windows" if system == "Windows" else "linux"
+
+
 def find_chrome() -> str | None:
-    """Google Chrome or Chromium: the macOS apps first, then `google-chrome` or `chromium` on PATH."""
-    for app in CHROME_APPS:
+    """Google Chrome, Chromium or (Windows) Edge: the install folders first, then `google-chrome` or `chromium`
+    on PATH."""
+    for app in chrome_candidates(_platform(), os.environ):
         p = Path(app).expanduser()
         if p.exists():
             return str(p)

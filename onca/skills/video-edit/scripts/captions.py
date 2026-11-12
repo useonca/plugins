@@ -16,18 +16,18 @@ sys.path.insert(0, str(Path(__file__).parent))
 import compose, core, shell  # noqa: E402
 
 
-ENGINE = Path(__file__).resolve().parents[2] / "video-render" / "scripts" / "engine"
+ENGINE = Path(__file__).resolve().parents[2] / "video-render" / "scripts" / "engine.py"
 
 
 def engine_cmd() -> list[str]:
     """The pinned render engine of the video-render skill (it finds Node 22+ itself)."""
-    return ["sh", str(ENGINE)]
+    return [sys.executable, str(ENGINE)]
 
 
 def hf(project: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
     cmd = [*engine_cmd(), *args]
     shell.log(f"(in {project}) $ {' '.join(cmd)}")
-    p = subprocess.run(cmd, cwd=project, capture_output=True, text=True)
+    p = subprocess.run(cmd, cwd=project, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check and p.returncode != 0:
         sys.stderr.write(p.stdout[-3000:] + p.stderr[-3000:])
         raise SystemExit(f"render engine {args[0]} failed")
@@ -47,7 +47,7 @@ def main() -> None:
     ap.add_argument("--band-height", type=int)
     ap.add_argument("--no-scrim", action="store_true", help="no dark box behind the words (only over calm, dark footage)")
     a = ap.parse_args()
-    edl = json.loads(Path(a.edl).read_text())
+    edl = json.loads(Path(a.edl).read_text(encoding="utf-8"))
     info = shell.probe(a.video)
     w, h = info["width"], info["height"]
     band = dict(compose.layout_for(w, h))
@@ -66,11 +66,11 @@ def main() -> None:
     (proj / "assets").mkdir(parents=True, exist_ok=True)
     (proj / "compositions").mkdir(exist_ok=True)
     shutil.copyfile(a.video, proj / "assets" / "cut.mp4")
-    (proj / "index.html").write_text(compose.index_html(w, h, duration))
-    (proj / "compositions" / "captions.html").write_text(compose.captions_html(groups, w, h, duration, a.accent, band, scrim=not a.no_scrim))
-    (proj / "captions.json").write_text(compose.groups_json(groups))
+    (proj / "index.html").write_text(compose.index_html(w, h, duration), encoding="utf-8")
+    (proj / "compositions" / "captions.html").write_text(compose.captions_html(groups, w, h, duration, a.accent, band, scrim=not a.no_scrim), encoding="utf-8")
+    (proj / "captions.json").write_text(compose.groups_json(groups), encoding="utf-8")
     check = hf(proj, "check", "--json", check=False)
-    (proj / "check.json").write_text(check.stdout)
+    (proj / "check.json").write_text(check.stdout, encoding="utf-8")
     if check.returncode != 0:
         shell.log("hyperframes check reported problems; see check.json (rendering anyway, judge from the frames)")
     silent = proj / "render.mp4"

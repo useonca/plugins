@@ -32,8 +32,8 @@ def main() -> None:
     ap.add_argument("--no-settle", action="store_true", help="keep the edges from the word times alone")
     a = ap.parse_args()
     info = shell.probe(a.src)
-    words = json.loads(Path(a.words).read_text())
-    plan = json.loads(Path(a.plan).read_text())
+    words = json.loads(Path(a.words).read_text(encoding="utf-8"))
+    plan = json.loads(Path(a.plan).read_text(encoding="utf-8"))
     settings = {k: getattr(a, k) for k in ("pad_before", "pad_after", "max_pause", "tight_pause")}
     ranges = core.build_ranges(words, plan["keep"], fps=info["fps"], duration=info["duration"], **settings)
     if info["has_audio"] and not a.no_settle:  # the word times can be a syllable off: cut in the quiet beside them
@@ -49,8 +49,8 @@ def main() -> None:
     edl = {"source": info["path"], "fps": info["fps"], "width": info["width"], "height": info["height"],
            "duration": info["duration"], "settings": settings, "ranges": ranges, "total": core.total(ranges), "words_out": retimed}
     d = Path(a.dir)
-    (d / "edl.json").write_text(json.dumps(edl, indent=1))
-    (d / "edl.md").write_text(core.edl_markdown(words, ranges, plan.get("drop", []), info["duration"], f"Cut list: {Path(a.src).name}"))
+    (d / "edl.json").write_text(json.dumps(edl, indent=1), encoding="utf-8")
+    (d / "edl.md").write_text(core.edl_markdown(words, ranges, plan.get("drop", []), info["duration"], f"Cut list: {Path(a.src).name}"), encoding="utf-8")
     shell.log(f"{info['duration']:.1f} s -> {edl['total']:.1f} s in {len(ranges)} pieces -> {d / 'edl.md'}")
 
 

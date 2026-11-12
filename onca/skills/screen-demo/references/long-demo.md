@@ -23,11 +23,11 @@ Write `STORYBOARD.md` first and show it to the founder: a table of chapters with
 
 ## 2. Voice
 
-`python3 ../voice/scripts/say.py --storyboard demo.json --out voice` (from the skills folder) speaks every `say` in the built-in voice into `voice/<id>.wav`. Any WAV at a scene's `audio` path (default `voice/<id>.wav`) is used as is, so the founder's own recorded voice, given with their consent in words, drops in the same way. Never another person's voice.
+`PY ../voice/scripts/say.py --storyboard demo.json --out voice` (from the skills folder) speaks every `say` in the built-in voice into `voice/<id>.wav`. Any WAV at a scene's `audio` path (default `voice/<id>.wav`) is used as is, so the founder's own recorded voice, given with their consent in words, drops in the same way. Never another person's voice.
 
 ## 3. Build
 
-`python3 scripts/demo.py build demo.json --out DIR [--burn-captions] [--draft]` writes:
+`PY scripts/demo.py build demo.json --out DIR [--burn-captions] [--draft]` writes:
 
 - `DIR/<name>.mp4` (H.264, yuv420p, 30 fps, loudness -16 LUFS);
 - `DIR/chapters.txt`: the title and one `0:00 Title` line per chapter, for the video's description;

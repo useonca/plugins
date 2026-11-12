@@ -16,12 +16,12 @@ Everything here is copied into the project's `kit/` by `kit.py new`, is free for
 - **Torn label**: `<div id="label" class="om-torn" data-seed="3">Organic</div>`: a paper strip in the kit's serif (DM Serif Display, whatever the brand's display font; `"label_font"` in `brand.json` changes it) whose edges the runtime tears. A different `data-seed` tears it differently; `data-rough` (6) sets how jagged. Slap it on with `drop`.
 - **Sticky note**: `<div id="note" class="om-sticky">one idea:</div>`, handwriting in Caveat; tilt it with the part's `rotate`.
 - **Polaroid**: `<div id="shot" class="om-polaroid"><img src="product.png"></div>`, a white frame with a deep bottom edge; pop it in at a tilt.
-- **Cut-out products**: `python3 scripts/kit.py cutout PHOTO OUT.png --trim` (Apple Vision on macOS 14+, else rembg with the open `isnet-general-use` model), then an image tag with `class="om-prop"`. Look at the edge before using it; a cut-out with a halo goes back to the founder's original photo.
+- **Cut-out products**: `PY scripts/kit.py cutout PHOTO OUT.png --trim` (Apple Vision on macOS 14+, else rembg with the open `isnet-general-use` model), then an image tag with `class="om-prop"`. Look at the edge before using it; a cut-out with a halo goes back to the founder's original photo.
 
 ## Product UI as a cut-out
 
 - Never a 1x screenshot: its text lands at about a third of the size it needs and blurs. Rebuild the card or screen as a small HTML page from the app's own theme (colours, fonts, radius from its code or `get_brand_kit`), with real wording and demo data, or open the product's own page.
-- Shoot it at 3x: `python3 scripts/kit.py shot card.html card.png --width 390 --height 844 --scale 3` (headless Chrome, a transparent ground, trimmed to the card). The log says the width to show it at.
+- Shoot it at 3x: `PY scripts/kit.py shot card.html card.png --width 390 --height 844 --scale 3` (headless Chrome, a transparent ground, trimmed to the card). The log says the width to show it at.
 - Show it at a third of its pixels inside a frame: `<div id="app1" class="om-cutout" style="left: 120px; top: 640px; width: 520px"><img src="card.png"></div>`, then `pop` or `drop` it on at a small tilt. UI text should land at 34 px or more on screen.
 
 ## Collage do and don't

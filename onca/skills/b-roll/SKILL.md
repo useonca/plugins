@@ -5,9 +5,9 @@ description: Onca production kit. Make b-roll for product videos, free and local
 
 # B-roll (Onca production kit)
 
-B-roll is the footage between product shots: it gives the eye a rest, sets a place or a mood, and shows what the product is for. Everything here renders on the founder's Mac for free through Onca's render engine (the `video-render` skill).
+B-roll is the footage between product shots: it gives the eye a rest, sets a place or a mood, and shows what the product is for. Everything here renders on the founder's computer for free through Onca's render engine (the `video-render` skill).
 
-Paths below are relative to this skill's folder; run each script by its absolute path with `python3`.
+Paths below are relative to this skill's folder; run each script by its absolute path with `PY` (`python3` on a Mac, `py -3 -X utf8` on Windows).
 
 ## Where b-roll comes from (in this order)
 
@@ -18,7 +18,7 @@ Paths below are relative to this skill's folder; run each script by its absolute
 
 ## Photo to clip
 
-`python3 scripts/broll.py photo IMG --out clip.mp4 [--seconds 5] [--move dolly|orbit|pan-left|pan-right] [--size 1920x1080] [--engine parallax|kenburns] [--depth depth.png] [--draft]`
+`PY scripts/broll.py photo IMG --out clip.mp4 [--seconds 5] [--move dolly|orbit|pan-left|pan-right] [--size 1920x1080] [--engine parallax|kenburns] [--depth depth.png] [--draft]`
 
 - **Parallax** (default): makes a depth map of the photo (`scripts/depth_map.py`, a small free depth model) and moves a virtual camera through it with Onca's own shader, so near things slide against far ones. The depth map needs free tools that `uv` downloads once (about 800 MB, cached afterwards). Tell the founder and ask once before the first run; `--depth` reuses a map made earlier.
 - **Pan and zoom** (`--engine kenburns`, moves `in`, `out`, `left`, `right`): ffmpeg only, no download. Use it when `uv` is missing, the founder declines the download, or the photo has no clear depth (a flat wall, a screenshot).
@@ -37,3 +37,7 @@ Product UI never goes through the parallax and is never tilted into 3D: it stays
 ## Other skills
 
 - Footage and long demos: `screen-demo`. Short vertical launch videos: `launch-video`. Narration: `voice`.
+
+## Windows
+
+`broll.py` runs the same way on Windows 11 (x64): the pan and zoom route needs only ffmpeg; the parallax depth map downloads its free tools through `uv` once (the same 800 MB, a CPU build of the model on Windows, so it takes a little longer). Install with the `video-render` skill's `## Windows` steps. Written from the tools' documentation and not yet run on a Windows machine: say which step failed if one does. Commands: one per line, no `&&`, no `\` line breaks.

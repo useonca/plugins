@@ -241,7 +241,7 @@ def photo(a) -> None:
         depth = Path(a.depth) if a.depth else out.with_name(out.stem + "-depth.png")
         stamp = depth.with_name(depth.name + ".source")
         source = photo_stamp(img)
-        if not a.depth and depth.exists() and stamp.exists() and stamp.read_text() == source:
+        if not a.depth and depth.exists() and stamp.exists() and stamp.read_text(encoding="utf-8") == source:
             shared.log(f"reusing the depth map {depth} (made from this photo)")
         elif not a.depth:
             uv = shared.shell.find_tool("uv")
@@ -250,7 +250,7 @@ def photo(a) -> None:
                 raise SystemExit(1)
             cmd = depth_command(str(HERE / "depth_map.py"), str(img), str(depth))
             shared.run([uv, *cmd[1:]])
-            stamp.write_text(source)
+            stamp.write_text(source, encoding="utf-8")
         elif not depth.exists():
             shared.bad_input([f"no depth map at {depth}"])
         proj = out.with_name(out.stem + "-hf")
@@ -258,7 +258,7 @@ def photo(a) -> None:
         photo_name = "assets/photo" + img.suffix.lower()
         shutil.copyfile(img, proj / photo_name)
         shutil.copyfile(depth, proj / "assets" / "depth.png")
-        (proj / "index.html").write_text(parallax_html(w, h, a.seconds, path, image=photo_name))
+        (proj / "index.html").write_text(parallax_html(w, h, a.seconds, path, image=photo_name), encoding="utf-8")
         raw = proj / "render.mp4"
         shared.render(proj, raw, a.draft)
         shared.finish(raw, out, sound=False)

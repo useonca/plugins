@@ -1,11 +1,11 @@
 ---
 name: carousel-render
-description: Onca's free local route for carousel slides and single post images (PNG) on the founder's Mac. Use it whenever an Onca template (get_template) asks for a carousel, a single image or a text card, or the founder wants slides for Instagram, LinkedIn-style posts, Threads, Bluesky or X. The slides are one HyperFrames composition, one scene per slide, snapshotted by the pinned engine of the video-render skill.
+description: Onca's free local route for carousel slides and single post images (PNG) on the founder's Mac or Windows PC. Use it whenever an Onca template (get_template) asks for a carousel, a single image or a text card, or the founder wants slides for Instagram, LinkedIn-style posts, Threads, Bluesky or X. The slides are one HyperFrames composition, one scene per slide, snapshotted by the pinned engine of the video-render skill.
 ---
 
 # Carousel render
 
-Every slide is rendered locally and costs nothing: no image generation. Paths below are from this skill's folder (the folder this SKILL.md is in): run each as that folder's absolute path plus the path, because commands run from the carousel's own folder. `ENGINE` is the absolute path of the `video-render` skill's `scripts/engine` (this skill's folder plus `/../video-render/scripts/engine`); read the `video-render` skill once for its engine rules (never a cloud command) and its `doctor.py check`.
+Every slide is rendered locally and costs nothing: no image generation. Paths below are from this skill's folder (the folder this SKILL.md is in): run each as that folder's absolute path plus the path, because commands run from the carousel's own folder. `PY` is `python3` on a Mac and `py -3 -X utf8` on Windows; `ENGINE` is the engine command, `PY` plus the absolute path of the `video-render` skill's `scripts/engine.py` (this skill's folder plus `/../video-render/scripts/engine.py`); read the `video-render` skill once for its engine rules (never a cloud command) and its `doctor.py check`.
 
 ## Before you write
 
@@ -40,10 +40,10 @@ Write `index.html` as one still composition, one one-second scene per slide:
 
 ## Render and check
 
-1. `sh "$ENGINE" check --json` in the folder; fix every error.
-2. `python3 scripts/carousel.py times <slides>` prints the times, e.g. `0.5,1.5,2.5`.
-3. `sh "$ENGINE" snapshot --at <those times>` writes the frames under `.hyperframes/artifacts/snapshots/`.
-4. `python3 scripts/carousel.py collect . slides <name> --slides <slides>` (add `--size 1080x1080` for a square) copies them to `slides/<name>-01.png` onward and checks each size; exit 1 names what is missing.
+1. From the carousel's folder, run `ENGINE check --json`; fix every error.
+2. `PY scripts/carousel.py times <slides>` prints the times, e.g. `0.5,1.5,2.5`.
+3. From the carousel's folder, run `ENGINE snapshot --at <those times>`: it writes the frames under `.hyperframes/artifacts/snapshots/`.
+4. `PY scripts/carousel.py collect . slides <name> --slides <slides>` (add `--size 1080x1080` for a square) copies them to `slides/<name>-01.png` onward and checks each size; exit 1 names what is missing.
 5. Open each PNG and look for text under the sizes above, text near an edge, two ideas on one slide, a claim the product cannot back. Fix and render again.
 
 ## Save and post
@@ -55,3 +55,7 @@ Write `index.html` as one still composition, one one-second scene per slide:
 
 - Free only: no paid image generation for a slide unless the founder said yes to that exact run after a free price check.
 - Real UI and demo data only; never the founder's real customer data, a password or a secret on a slide.
+
+## Windows
+
+Slides render the same way on Windows 11 (x64), with Chrome from the engine and the `video-render` skill's `## Windows` setup. Written from the tools' documentation and not yet run on a Windows machine: say which step failed if one does. Commands: one per line, no `&&`, no `\` line breaks.

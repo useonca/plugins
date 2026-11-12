@@ -218,7 +218,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"not a folder: {src}", file=sys.stderr)
         raise SystemExit(2)
     doc = scan(src)
-    Path(a.out).write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
+    Path(a.out).write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"[screen-demo] {len(doc['colors'])} colours, {len(doc['fonts'])} fonts, {len(doc['copy'])} strings "
           f"from {len(doc['files'])} files -> {a.out}", file=sys.stderr)
 

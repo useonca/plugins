@@ -17,7 +17,7 @@ usage: kit.py new PROJECT [--size 1080x1920] [--fps 30] [--duration 12]
        kit.py recipe check RECIPE.json
        kit.py recipe cues RECIPE.json --out FILE
 
-Run it with python3 (macOS, Linux) or py -3 (Windows). Exit codes: 0 ok, 2 bad input (every problem, one per
+Run it with python3 (macOS, Linux) or py -3 -X utf8 (Windows). Exit codes: 0 ok, 2 bad input (every problem, one per
 line), 1 a tool failed (named, with its last lines). Nothing here installs anything or calls the internet; `pick`
 serves one page on this machine only (127.0.0.1) until the founder clicks or the time runs out.
 """
@@ -47,7 +47,6 @@ for folder in (HERE, RENDER, EDIT):
 import kit_core  # noqa: E402
 import music_core  # noqa: E402
 import picker  # noqa: E402
-import pin as engine_pin  # noqa: E402
 import recipe_core  # noqa: E402
 import sound_core  # noqa: E402
 import timeline_core  # noqa: E402
@@ -117,20 +116,13 @@ def plan() -> dict:
     return kit_core.platform_plan(sys.platform, macos_major(), bool(shutil.which("swift")))
 
 
-def engine_command_line(name: str = "the render engine") -> list:
-    """The pinned render engine's command (video-render's), on this platform's route."""
-    p = plan()
-    npx = shutil.which("npx")
-    if p["engine"] == "npx":
-        node = shutil.which("node")
-        version = subprocess.run([node, "--version"], capture_output=True, text=True).stdout if node else ""
-        if not node or not npx or not kit_core.node_ok(version):
-            tool_failed(name, f"needs Node 22 or newer: {p['install']['node']}, then open a new terminal")
-    return kit_core.engine_command(sys.platform, RENDER / "engine", engine_pin.engine_pin(engine_pin.ENGINE_JSON), npx)
+def engine_command_line() -> list:
+    """The pinned render engine's command (video-render's engine.py, which handles Mac and Windows)."""
+    return kit_core.engine_command(sys.executable, RENDER / "engine.py")
 
 
 def engine(args: list, name: str = "the render engine") -> subprocess.CompletedProcess:
-    return run(engine_command_line(name) + args, name)
+    return run(engine_command_line() + args, name)
 
 
 # ---------------------------------------------------------------- new
@@ -395,7 +387,7 @@ def media_seconds(path: Path):
     if not probe:
         return None
     done = subprocess.run([probe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding="utf-8", errors="replace")
     try:
         return float(done.stdout.strip())
     except ValueError:

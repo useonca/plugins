@@ -838,12 +838,11 @@ def picker_html(title: str, choices: list) -> str:
 
 REMBG_PIN = "2.0.87"
 REMBG_MODEL = "isnet-general-use"  # Apache 2.0; rembg's default model (BRIA RMBG) is non-commercial
-NODE_MAJOR = 22
 CUTOUT_SWIFT = Path(__file__).resolve().parent / "cutout.swift"
 INSTALL = {
     "darwin": {"node": "brew install node@22", "ffmpeg": "brew install ffmpeg", "uv": "brew install uv",
                "swift": "xcode-select --install", "chrome": "brew install --cask google-chrome"},
-    "win32": {"node": "winget install OpenJS.NodeJS.LTS", "ffmpeg": "winget install Gyan.FFmpeg",
+    "win32": {"node": "winget install OpenJS.NodeJS.22", "ffmpeg": "winget install Gyan.FFmpeg",
               "uv": "winget install --id=astral-sh.uv -e", "chrome": "winget install Google.Chrome"},
     "linux": {"node": "install Node 22 or newer from https://nodejs.org/en/download",
               "ffmpeg": "install ffmpeg from https://ffmpeg.org/download.html",
@@ -861,12 +860,11 @@ def _family(platform: str) -> str:
 
 
 def platform_plan(platform: str, macos_major=None, swift: bool = False) -> dict:
-    """How this machine runs the kit's tools: the render engine route, the cut-out engine and the install line
-    of each tool. The only place the kit decides by platform."""
+    """How this machine runs the kit's tools: the cut-out engine and the install line of each tool (the render
+    engine's own platform handling lives in video-render's engine.py). The only place the kit decides by platform."""
     fam = _family(platform)
     vision = fam == "darwin" and macos_major is not None and macos_major >= 14 and swift
-    return {"engine": "npx" if fam == "win32" else "sh", "cutout": "vision" if vision else "rembg",
-            "install": dict(INSTALL[fam])}
+    return {"cutout": "vision" if vision else "rembg", "install": dict(INSTALL[fam])}
 
 
 def chrome_candidates(platform: str, env: dict) -> list:
@@ -889,17 +887,10 @@ def shot_command(chrome, page_url: str, out, width: int, height: int, scale: flo
             page_url]
 
 
-def node_ok(version_text: str) -> bool:
-    """True for Node 22 or newer (`node --version` prints v22.4.0)."""
-    m = re.search(r"v?(\d+)\.", str(version_text or ""))
-    return bool(m) and int(m.group(1)) >= NODE_MAJOR
-
-
-def engine_command(platform: str, engine_script, pin: str, npx) -> list:
-    """The render engine's command line: video-render's `sh engine` where there is a sh, else npx with the pin."""
-    if platform_plan(platform)["engine"] == "npx":
-        return [str(npx), "--yes", f"hyperframes@{pin}"]
-    return ["sh", str(engine_script)]
+def engine_command(python, engine_script) -> list:
+    """The render engine's command line: video-render's engine.py under this Python (it finds Node 22 and the pinned
+    HyperFrames on Mac and Windows alike and names what to install when one is missing)."""
+    return [str(python), "-X", "utf8", str(engine_script)]
 
 
 def cutout_command(engine: str, src, out, swift, uv) -> list:

@@ -6,10 +6,12 @@ When the founder shares a video they like, copy how it works, never what it show
 
 Use `video-edit`'s tools on the reference (its folder plus `/scripts`, as `S`):
 
-```bash
-python3 $S/transcribe.py REF.mp4 --out ref/words.json
-python3 $S/map.py REF.mp4 --dir ref --words ref/words.json
 ```
+PY S/transcribe.py REF.mp4 --out ref/words.json
+PY S/map.py REF.mp4 --dir ref --words ref/words.json
+```
+
+(`S` is the folder's absolute path plus `/scripts`: write it out in each command.)
 
 `ref/map.md` gives the words in phrases, each shot change with its time, words per minute and the longest still stretch; `ref/sheets/` one frame per shot. Zoom into the moments that move (`ffmpeg -ss T -t 2 -i REF.mp4 -vf fps=10,scale=360:-2,tile=5x4 ref/zoom-T.png`) to see how a part enters: what grows, what blurs, what overshoots.
 
@@ -35,12 +37,12 @@ python3 $S/map.py REF.mp4 --dir ref --words ref/words.json
 - `look.density`: count the pieces on screen at the busiest moment of a few beats (ground, clutter, hero, labels, props) and write it down; build to the same count. A collage reference usually has 6 to 10 overlapping pieces a beat: matching that does more than any one effect.
 - Fill the frame from the first beat: count at each beat's first frame too, not only its busiest. A reference is rarely half empty while it waits for its hero, so the ground and clutter are on at the beat's start and the rest lands within its first second.
 
-`python3 scripts/kit.py recipe check RECIPE.json` lists every problem at once (exit 2).
+`PY scripts/kit.py recipe check RECIPE.json` lists every problem at once (exit 2).
 
 ## 3. Build from it
 
-1. `python3 scripts/kit.py new PROJECT --duration D` (D from the recipe), then the brand (`kit.py brand`).
-2. `python3 scripts/kit.py recipe cues RECIPE.json --out PROJECT/cues.json`: one cue per listed part, each at its beat's start, with placeholder values where a part needs them (a counter's `to`, a chart's `values`, a morph's `states`).
+1. `PY scripts/kit.py new PROJECT --duration D` (D from the recipe), then the brand (`kit.py brand`).
+2. `PY scripts/kit.py recipe cues RECIPE.json --out PROJECT/cues.json`: one cue per listed part, each at its beat's start, with placeholder values where a part needs them (a counter's `to`, a chart's `values`, a morph's `states`).
 3. Write the founder's words for each beat (the `says` line tells you what each beat is for), the page's elements with the cue ids, and the real values; then time each cue inside its beat and `kit.py sync`.
 4. Render a draft, set it beside the reference (`ffmpeg -i REF.mp4 -i draft.mp4 -filter_complex "[0:v]scale=1080:1920[a];[1:v]scale=1080:1920[b];[a][b]hstack" side.mp4`) and compare beat by beat: the same rhythm, the same kind of motion, your content. Fix the biggest difference first.
 

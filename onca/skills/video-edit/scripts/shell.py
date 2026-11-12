@@ -1,4 +1,4 @@
-"""The thin shell: subprocess calls to ffmpeg, ffprobe, parakeet-mlx and scenedetect.
+"""The thin shell: subprocess calls to ffmpeg, ffprobe, the recognizer (parakeet-mlx or whisper-ctranslate2) and scenedetect.
 
 No decisions here; core.py makes them. Every command is printed before it runs
 so a log shows exactly what happened. Tools and Node 22+ are found by the
@@ -29,9 +29,10 @@ import map_core  # noqa: E402
 import providers  # noqa: E402
 
 
-def find_tool(name: str, path_env: str | None = None, home: Path | None = None) -> str | None:
-    """``name`` on PATH, else in ``~/.local/bin`` (where ``uv tool install`` puts it); None when missing."""
-    return doctor.find_tool(name, path_env, home)
+def find_tool(name: str, path_env: str | None = None, home: Path | None = None, **kwargs) -> str | None:
+    """``name`` on PATH, else in ``~/.local/bin`` (where ``uv tool install`` puts it), else (Windows) winget's
+    folders; None when missing."""
+    return doctor.find_tool(name, path_env, home, **kwargs)
 
 
 def find_node22(path_env: str | None = None, home: Path | None = None, **kwargs) -> str | None:
@@ -43,7 +44,7 @@ def tool(name: str) -> str:
     """The path of ``name``, or stop with its install command (run `python3 doctor.py check` for all of them)."""
     found = find_tool(name)
     if not found:
-        raise SystemExit(f"{name} not found: install it with `{doctor.INSTALL[name]}` (after the founder's yes)")
+        raise SystemExit(f"{name} not found: install it with `{doctor.install_for(doctor.current_platform(), name)}` (after the founder's yes)")
     return found
 
 
@@ -51,9 +52,18 @@ def log(msg: str) -> None:
     print(f"[video-edit] {msg}", file=sys.stderr, flush=True)
 
 
+@functools.lru_cache(maxsize=None)
+def _program(name: str) -> str:
+    """The path doctor.py finds for ffmpeg or ffprobe (on Windows also winget's folders, which a new terminal's PATH
+    may not hold yet); the bare name when it finds nothing."""
+    return find_tool(name) or name
+
+
 def run(cmd: list[str], *, env: dict | None = None, check: bool = True, quiet: bool = True) -> subprocess.CompletedProcess:
+    if cmd and cmd[0] in ("ffmpeg", "ffprobe"):
+        cmd = [_program(cmd[0]), *cmd[1:]]
     log("$ " + " ".join(_q(c) for c in cmd))
-    p = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, **(env or {})})
+    p = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, **(env or {})}, encoding="utf-8", errors="replace")
     if check and p.returncode != 0:
         sys.stderr.write(p.stderr[-4000:])
         raise SystemExit(f"command failed ({p.returncode}): {cmd[0]}")
@@ -100,14 +110,25 @@ def extract_wav(src: str | Path, dst: str | Path, rate: int = 16000, channels: i
 
 
 def parakeet_json(wav: str | Path, out_dir: str | Path) -> dict:
-    """Word-timed transcript. Offline first: the model is cached and the hub check alone can take minutes."""
+    """Word-timed transcript (Mac). Offline first: the model is cached and the hub check alone can take minutes."""
     out_dir = Path(out_dir)
     args = [tool("parakeet-mlx"), str(wav), "--output-format", "json", "--output-dir", str(out_dir)]
     p = run(args, env={"HF_HUB_OFFLINE": "1"}, check=False)
     if p.returncode != 0:
         log("offline transcription failed (model not cached yet?), retrying online")
         run(args)
-    return json.loads((out_dir / (Path(wav).stem + ".json")).read_text())
+    return json.loads((out_dir / (Path(wav).stem + ".json")).read_text(encoding="utf-8"))
+
+
+def asr_json(wav: str | Path, out_dir: str | Path, plat: str | None = None) -> dict:
+    """The recognizer's JSON for ``wav``: parakeet-mlx on an Apple Silicon Mac, else whisper-ctranslate2 (word
+    timestamps, the model downloads on the first run). ``core.words_from_asr`` reads either."""
+    if (plat or doctor.current_platform()) == "mac-arm":
+        return parakeet_json(wav, out_dir)
+    out_dir = Path(out_dir)
+    run([tool("whisper-ctranslate2"), str(wav), "--word_timestamps", "True", "--output_format", "json",
+         "--output_dir", str(out_dir), "--compute_type", "auto"], quiet=False)
+    return json.loads((out_dir / (Path(wav).stem + ".json")).read_text(encoding="utf-8"))
 
 
 def frame_png(src: str | Path, t: float, dst: str | Path, width: int = 270) -> None:
@@ -135,7 +156,7 @@ def scenes(src: str | Path, out_dir: str | Path) -> list[dict]:
     csv = out_dir / "scenes.csv"
     if not csv.exists():
         return []
-    rows = [line.split(",") for line in csv.read_text().splitlines()]
+    rows = [line.split(",") for line in csv.read_text(encoding="utf-8").splitlines()]
     head = next((k for k, r in enumerate(rows) if r and r[0] == "Scene Number"), None)
     if head is None:
         return []
@@ -167,7 +188,7 @@ def levels(src: str | Path) -> list[float]:
 
 def _pcm(cmd: list) -> array.array:
     """The 16-bit little-endian samples an ffmpeg command writes to stdout."""
-    p = subprocess.run(cmd, capture_output=True)
+    p = subprocess.run([_program(cmd[0]), *cmd[1:]], capture_output=True)
     if p.returncode != 0:
         sys.stderr.write(p.stderr.decode(errors="replace")[-4000:])
         raise SystemExit(f"command failed ({p.returncode}): ffmpeg")
@@ -246,12 +267,31 @@ def encoders() -> frozenset:
     return frozenset(out)
 
 
+@functools.lru_cache(maxsize=1)
+def usable_encoders() -> frozenset:
+    """The encoders this computer can really use: the ones ffmpeg lists, minus each hardware encoder whose
+    one-frame trial encode fails (ffmpeg lists NVENC, QSV and AMF even with no such GPU). Read once per run."""
+    listed = encoders()
+    hardware = [e for e in ("h264_videotoolbox", "h264_nvenc", "h264_qsv", "h264_amf") if e in listed]
+    trial = doctor.probe_hw(find_tool("ffmpeg") or "ffmpeg", doctor.current_platform(), candidates=hardware)
+    failed = {enc for enc, ok in trial.items() if not ok}
+    if failed:
+        log("hardware encoders that failed a trial encode: " + ", ".join(sorted(failed)))
+    return frozenset(listed - failed)
+
+
+def encoders_for(name: str) -> frozenset:
+    """The encoders to pick ``name`` from: the trial-encode result for ``auto`` or a hardware name, the plain list
+    for a software one (so ``--encoder x264`` never starts a GPU trial)."""
+    return usable_encoders() if name in ("auto", "videotoolbox", "nvenc", "qsv", "amf") else encoders()
+
+
 def load_providers(path: str | Path | None) -> dict | None:
     """providers.json, or None; every problem printed and exit 2 when it is not valid."""
     if not path:
         return None
     try:
-        config = json.loads(Path(path).read_text())
+        config = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         print(f"providers: cannot read {path}: {exc}", file=sys.stderr)
         raise SystemExit(2)
@@ -367,7 +407,7 @@ def caption_pngs(pages: dict, size: tuple, out_dir: str | Path, font_check: str 
         page.call("Emulation.setDeviceMetricsOverride", width=size[0], height=size[1], deviceScaleFactor=1, mobile=False)
         for n, (key, html_text) in enumerate(pages.items()):
             src = out_dir / f"{key}.html"
-            src.write_text(html_text)
+            src.write_text(html_text, encoding="utf-8")
             if n == 0 or not _swap(page, html_text):
                 _open(page, src)
             if n == 0:

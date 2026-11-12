@@ -27,9 +27,15 @@ import timeline_core as tlc  # noqa: E402
 STEMS = ("vocals.wav", "background.wav")
 
 
-def separate_local(wav: Path, out_dir: Path, work: Path) -> None:
+def demucs_command(tool_path: str, wav: Path, work: Path, plat: str) -> list:
+    """The separator's command line: demucs-mlx on an Apple Silicon Mac (compiled: about 15% faster), else demucs."""
+    return [tool_path, "-n", "htdemucs", *(["--compile"] if plat == "mac-arm" else []), "-o", str(work), str(wav)]
+
+
+def separate_local(wav: Path, out_dir: Path, work: Path, plat: str | None = None) -> None:
     """The local separator writes four stems; the background is drums + bass + other, mixed without scaling."""
-    shell.run([shell.tool("demucs-mlx"), "-n", "htdemucs", "--compile", "-o", str(work), str(wav)])  # compiled: about 15% faster
+    plat = plat or shell.doctor.current_platform()
+    shell.run(demucs_command(shell.tool("demucs-mlx" if plat == "mac-arm" else "demucs"), wav, work, plat))
     found = {p.name: p for p in work.rglob("*.wav")}
     missing = [n for n in ("vocals.wav", "drums.wav", "bass.wav", "other.wav") if n not in found]
     if missing:

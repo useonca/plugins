@@ -1,6 +1,6 @@
 ---
 name: launch-video
-description: Onca's method for a product launch, ad or social video, made free on the founder's Mac from the product's real UI. Starts from Onca's video templates (list_templates, get_template) and checks Onca is signed in; falls back to researched creative mechanisms. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product.
+description: Onca's method for a product launch, ad or social video, made free on the founder's Mac or Windows PC from the product's real UI. Starts from Onca's video templates (list_templates, get_template) and checks Onca is signed in; falls back to researched creative mechanisms. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product.
 ---
 
 # Launch video
@@ -19,11 +19,13 @@ Go on without Onca only if the founder says so, and then say that no template or
 
 ## Step 0: is this plugin current?
 
+`PY` is the Python command: `python3` on a Mac, `py -3 -X utf8` on Windows (see `## Windows`).
+
 1. Call Onca's `get_launch_overview` and read `plugin.version`.
-2. Run `python3 ../video-render/scripts/doctor.py check-update --latest <that version>`.
+2. Run `PY ../video-render/scripts/doctor.py check-update --latest <that version>`.
 3. `outdated`: tell the founder "The Onca plugin has an update (<installed> to <latest>)", then run the update commands for this client from `plugin.update`, then ask the founder to type `/reload-plugins` in Claude Code (a slash command only they can run) or to start a new session (Codex: a new session); until then this session still has the old skills. If the update finds nothing newer, keep the installed version and go on.
 4. `current`, `newer` or `unknown`: go on.
-5. Before the first video of a session, run `python3 ../video-render/scripts/doctor.py check` and handle what is missing as the `video-render` skill says.
+5. Before the first video of a session, run `PY ../video-render/scripts/doctor.py check` and handle what is missing as the `video-render` skill says.
 
 ## Start from Onca's templates
 
@@ -59,3 +61,7 @@ Onca keeps proven video formats. Use them before inventing a concept.
 - Real UI and true claims only; no wording that overclaims; no secrets or real customer data on screen.
 - No paid generation without Onca's content guide's free price check and the founder's yes for that exact run (`get_content_guide`). Never the engine's cloud render, publish or anything else that spends.
 - No em or en dashes in on-screen text; a plain hyphen.
+
+## Windows
+
+The whole method works on a Windows 11 x64 PC: run the plugin's scripts with `py -3 -X utf8` as `PY`, install with the `video-render` skill's `## Windows` steps (three `winget` lines the founder says yes to), and every skill it uses (`video-edit`, `screen-demo`, `voice`, `b-roll`, `carousel-render`) has its own `## Windows` section. A Windows render takes its frames from screenshots, so it can look the same but is not byte for byte repeatable. Written from the tools' documentation and not yet run on a Windows machine: say which step failed if one does. Commands: one per line, no `&&`, no `\` line breaks.

@@ -44,7 +44,7 @@ class Recorder:
         self.loaded = False
         self.mouse = (size[0] / 2, size[1] / 2)
         (rec / "frames").mkdir(parents=True, exist_ok=True)
-        self.events_file = open(rec / "events.jsonl", "w")
+        self.events_file = open(rec / "events.jsonl", "w", encoding="utf-8")
 
     def setup(self, attach: bool = False) -> None:
         self.c.call("Page.enable")
@@ -220,15 +220,15 @@ class Recorder:
     def write(self, start_ts: float, stop_ts: float) -> None:
         self.events_file.close()
         rec = self.rec
-        (rec / "frames.json").write_text(json.dumps(self.frames, indent=0))
+        (rec / "frames.json").write_text(json.dumps(self.frames, indent=0), encoding="utf-8")
         if not self.frames:
             print("no frame arrived from Chrome's screencast", file=sys.stderr)
             raise SystemExit(1)
         start_ts = self.frames[0]["ts"]  # raw.mp4 starts at the first frame, so the click log does too
         frames = [f for f in self.frames if f["ts"] <= stop_ts]
-        (rec / "frames.ffconcat").write_text(record_core.ffconcat(frames, stop_ts))
+        (rec / "frames.ffconcat").write_text(record_core.ffconcat(frames, stop_ts), encoding="utf-8")
         log = record_core.click_log(self.events, start_ts, stop_ts, {"w": self.size[0], "h": self.size[1], "dpr": self.dpr})
-        (rec / "clicks.json").write_text(json.dumps(log, indent=1))
+        (rec / "clicks.json").write_text(json.dumps(log, indent=1), encoding="utf-8")
         shared.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
                     "-i", str(rec / "frames.ffconcat"), "-t", f"{stop_ts - start_ts:.3f}",
                     "-vf", "fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2:out_range=tv,format=yuv420p",
@@ -244,7 +244,7 @@ def _local(url: str) -> bool:
 
 def cmd_run(a) -> None:
     try:
-        steps = record_core.parse_steps(json.loads(Path(a.steps).read_text()))
+        steps = record_core.parse_steps(json.loads(Path(a.steps).read_text(encoding="utf-8")))
     except FileNotFoundError:
         shared.bad_input([f"no steps file at {a.steps}"])
     except ValueError as e:

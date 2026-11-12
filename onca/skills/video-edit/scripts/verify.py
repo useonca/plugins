@@ -40,7 +40,7 @@ def picture_checks(final: str, duration: float, max_still: float, speech: list) 
 def plan_from(a, info: dict) -> dict:
     """What the output should hold: words, cut points, length, and (timeline) caption overlaps."""
     if a.edl:
-        edl = json.loads(Path(a.edl).read_text())
+        edl = json.loads(Path(a.edl).read_text(encoding="utf-8"))
         return {"words": edl["words_out"], "ranges": edl["ranges"], "total": edl["total"], "overlaps": None, "tl": None,
                 "main": [{"src": "main", "in": r["start"], "out": r["end"]} for r in edl["ranges"]], "audio": {"main": edl["source"]}}
     tl = timeline.load(a.timeline)
@@ -82,7 +82,7 @@ def main() -> None:
     info = shell.probe(a.final)
     plan = plan_from(a, info)
     shell.extract_wav(a.final, d / "final16k.wav")
-    heard = core.apply_fixes(core.words_from_parakeet(shell.parakeet_json(d / "final16k.wav", d)), core.parse_fixes(a.fix))
+    heard = core.apply_fixes(core.words_from_asr(shell.asr_json(d / "final16k.wav", d)), core.parse_fixes(a.fix))
     expected = [w["text"] for w in plan["words"]]
     diff = core.word_diff(expected, [w["text"] for w in heard])
     acc = core.word_accuracy(expected, [w["text"] for w in heard])
@@ -114,7 +114,7 @@ def main() -> None:
     res = {"checks": checks, "accuracy": acc, "diff": diff, "clipped": clipped, "loudness": loud,
            "duration": info["duration"], "planned": plan["total"], "size": f"{info['width']}x{info['height']}", "sheet": str(sheet),
            **pic, "edges": edges, "zoom": zoom, "covered": covered, "look": look, "heard": " ".join(w["text"] for w in heard)}
-    (d / "verify.json").write_text(json.dumps(res, indent=1))
+    (d / "verify.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
     spans = lambda xs: ", ".join(f"{x['start']:.1f}-{x['end']:.1f} s" for x in xs) or "none"  # noqa: E731
     md = [f"# Self-check: {Path(a.final).name}", "",
           f"- words: {checks['words']} ({acc:.0%} of the approved words heard, {len(diff)} differences)",
@@ -139,7 +139,7 @@ def main() -> None:
     md += ["", "## Cuts with a word not heard nearby", ""]
     md += [f"- cut {c['cut']} at {c['at']:.2f} s: {', '.join(c['missing'])}" for c in clipped] or ["- none"]
     md += ["", "## Heard", "", res["heard"]]
-    (d / "verify.md").write_text("\n".join(md) + "\n")
+    (d / "verify.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     shell.log(" | ".join(f"{k} {v}" for k, v in checks.items()) + f" -> {d / 'verify.md'}")
 
 

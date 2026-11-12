@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "onca",
-  "version": "1.3.0",
-  "description": "Onca for your AI client: its tools (connections, scheduling, results) and free product videos made on your own Mac: the Onca method (hook, info, closure; five concepts; the founder picks), real UI rendered to 9:16 video, a local video editor, and narration made locally or with Onca voice (paid in Onca credits, approved by the founder).",
+  "version": "1.3.1",
+  "description": "Onca for your AI client: its tools (connections, scheduling, results) and free product videos made on your Mac or Windows PC: the Onca method (hook, info, closure; five concepts; the founder picks), real UI rendered to 9:16 video, a local video editor, and narration made locally or with Onca voice (paid in Onca credits, approved by the founder).",
   "author": {
     "name": "Onca",
     "url": "https://useonca.com"

@@ -97,7 +97,7 @@ def render(a) -> None:
     if problems:
         shared.bad_input(problems)
     try:
-        flow = flow_core.parse_flow(json.loads((src / "flow.json").read_text()))
+        flow = flow_core.parse_flow(json.loads((src / "flow.json").read_text(encoding="utf-8")))
     except ValueError as e:
         shared.bad_input(str(e))
     times = flow_core.flow_times(flow)
@@ -110,8 +110,8 @@ def render(a) -> None:
     shutil.copytree(src, proj, ignore=shutil.ignore_patterns("out", "REC", "*-hf", ".DS_Store"))
     shutil.copytree(KIT, proj / "kit")
     data = {"w": w, "h": h, "dpr": dpr, "start": flow["start"], "screens": flow["screens"], "steps": times}
-    (proj / "flow-data.js").write_text("window.FLOW_DATA = " + json.dumps(data) + ";\n")
-    (proj / "index.html").write_text(page_html((src / "index.html").read_text(), w, h, dpr, duration))
+    (proj / "flow-data.js").write_text("window.FLOW_DATA = " + json.dumps(data) + ";\n", encoding="utf-8")
+    (proj / "index.html").write_text(page_html((src / "index.html").read_text(encoding="utf-8"), w, h, dpr, duration), encoding="utf-8")
     shared.log(f"{len(times)} steps, {duration} s, {w}x{h} at {dpr:g}x")
     rects = measure(proj / "index.html", times, (round(w * dpr), round(h * dpr)))
     try:
@@ -120,7 +120,7 @@ def render(a) -> None:
         print(f"{e} (is the selector right and its screen shown at that step?)", file=sys.stderr)
         raise SystemExit(2)
     log["pointer"] = flow["pointer"]
-    (rec / "clicks.json").write_text(json.dumps(log, indent=1))
+    (rec / "clicks.json").write_text(json.dumps(log, indent=1), encoding="utf-8")
     shared.render(proj, rec / "raw.mp4", a.draft)
     shared.log(f"{len(log['events'])} events -> {rec / 'clicks.json'}, {rec / 'raw.mp4'}")
 

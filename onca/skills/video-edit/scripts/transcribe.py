@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Word-timed transcript of a video or audio file with parakeet-mlx (local, free).
+"""Word-timed transcript of a video or audio file with a local recognizer (parakeet-mlx on a Mac, whisper-ctranslate2 elsewhere; free).
 
 usage: transcribe.py IN --out words.json [--fix WRONG=RIGHT ...] [--providers providers.json]
 
@@ -25,7 +25,7 @@ def provider_words(spec: dict, wav: Path, work: Path) -> list:
         out.unlink()
     shell.run_provider(spec, {"in": str(wav), "out": str(out), "out_dir": str(work)})
     try:
-        return providers.normalize_words(json.loads(out.read_text()))
+        return providers.normalize_words(json.loads(out.read_text(encoding="utf-8")))
     except ValueError as exc:
         raise SystemExit(f"provider transcribe ({providers.describe(spec)}): not words: {exc}")
 
@@ -36,7 +36,7 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--fix", action="append", default=[])
     ap.add_argument("--silence-db", default="-35dB", help="raise toward -30dB for a noisy room")
-    ap.add_argument("--no-refine", action="store_true", help="keep parakeet's own word edges")
+    ap.add_argument("--no-refine", action="store_true", help="keep the recognizer's own word edges")
     ap.add_argument("--providers", help="providers.json (default: the local recognizer)")
     a = ap.parse_args()
     spec = providers.resolve("transcribe", shell.load_providers(a.providers))
@@ -51,20 +51,20 @@ def main() -> None:
     if spec["kind"] != "local":
         shell.extract_wav(src, wav)
         words = provider_words(spec, wav, work)
-    elif raw_json.exists() and stamp_file.exists() and stamp_file.read_text() == stamp:
+    elif raw_json.exists() and stamp_file.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
         shell.log("transcript cached for this source")
-        words = core.words_from_parakeet(json.loads(raw_json.read_text()))
+        words = core.words_from_asr(json.loads(raw_json.read_text(encoding="utf-8")))
     else:
         shell.extract_wav(src, wav)
-        words = core.words_from_parakeet(shell.parakeet_json(wav, work))
-        stamp_file.write_text(stamp)
+        words = core.words_from_asr(shell.asr_json(wav, work))
+        stamp_file.write_text(stamp, encoding="utf-8")
     if not wav.exists():
         shell.extract_wav(src, wav)
     if not a.no_refine:
         sil = core.parse_silences(shell.ffmpeg_log(["-i", str(wav), "-af", f"silencedetect=noise={a.silence_db}:d=0.25"]))
         words = core.refine_with_silences(words, sil)
     words = core.apply_fixes(words, core.parse_fixes(a.fix))
-    out.write_text(json.dumps(words, indent=1))
+    out.write_text(json.dumps(words, indent=1), encoding="utf-8")
     shell.log(f"{len(words)} words -> {out}")
 
 

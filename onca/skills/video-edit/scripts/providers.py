@@ -15,12 +15,13 @@ import re
 from pathlib import PurePath
 
 import core
+import timeline_core as tlc
 
 STEPS = ("transcribe", "voice", "separate", "encode")
 KINDS = ("local", "command", "file")
 FORMATS = {"transcribe": "words", "voice": "wav", "separate": "stems", "encode": None}
 PAID_CLIS = {"higgsfield", "hf", "higgs", "elevenlabs", "heygen", "openai"}
-LOCAL_ENCODERS = ("auto", "videotoolbox", "x264", "x264-fast")
+LOCAL_ENCODERS = ("auto", *tlc.ENCODERS)
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 
@@ -51,7 +52,7 @@ def validate(config: dict) -> list:
             if not isinstance(spec.get("path"), str) or not spec["path"]:
                 problems.append(f"{step}: a file provider needs `path`")
         if step == "encode" and kind in ("command", "file"):
-            problems.append("encode: only the local encoder renders (name: auto, videotoolbox, x264 or x264-fast)")
+            problems.append("encode: only the local encoder renders (name: " + ", ".join(LOCAL_ENCODERS) + ")")
         elif kind == "local" and step == "encode" and spec.get("name", "auto") not in LOCAL_ENCODERS:
             problems.append(f"encode: name {spec.get('name')!r} is not one of {', '.join(LOCAL_ENCODERS)}")
     return problems
@@ -113,10 +114,10 @@ def _sec(w: dict, key: str):
 
 def normalize_words(doc) -> list:
     """Words from any provider -> [{"i", "text", "start", "end"}] in seconds, sorted by start.
-    Takes parakeet JSON, a list of words, or {"words": [...]}; a word has `text` or `word`, and `start`/`end`
+    Takes parakeet or whisper JSON, a list of words, or {"words": [...]}; a word has `text` or `word`, and `start`/`end`
     in seconds or `start_ms`/`end_ms`. ValueError for anything else."""
-    if isinstance(doc, dict) and "sentences" in doc:
-        return core.words_from_parakeet(doc)
+    if isinstance(doc, dict) and ("sentences" in doc or "segments" in doc):
+        return core.words_from_asr(doc)
     items = doc.get("words") if isinstance(doc, dict) else doc
     if not isinstance(items, list):
         raise ValueError("words must be a list, {\"words\": [...]} or parakeet JSON")

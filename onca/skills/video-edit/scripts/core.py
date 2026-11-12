@@ -69,6 +69,31 @@ def words_from_parakeet(doc: dict) -> list[dict]:
     return out
 
 
+def words_from_whisper(doc: dict) -> list[dict]:
+    """Turn whisper-ctranslate2 JSON (segments -> words with `word`, `start`, `end`) into words, the same shape
+    as ``words_from_parakeet``. A segment without ``words`` adds none; a word that is only a space is skipped."""
+    out: list[dict] = []
+    for segment in doc.get("segments", []):
+        for w in segment.get("words") or []:
+            try:
+                text = str(w.get("word", "")).strip()
+                if text:
+                    out.append({"i": len(out), "text": text, "start": round(float(w["start"]), 3), "end": round(float(w["end"]), 3)})
+            except (AttributeError, KeyError, TypeError, ValueError):
+                raise ValueError("not a transcript: a whisper word needs `word`, `start` and `end`") from None
+    return out
+
+
+def words_from_asr(doc: dict) -> list[dict]:
+    """Words from either recognizer's JSON: parakeet (``sentences``, the Mac) or whisper (``segments``, Windows
+    and the rest). ValueError for anything else."""
+    if isinstance(doc, dict) and "sentences" in doc:
+        return words_from_parakeet(doc)
+    if isinstance(doc, dict) and "segments" in doc:
+        return words_from_whisper(doc)
+    raise ValueError("not a transcript: expected parakeet sentences or whisper segments")
+
+
 def speech_regions(silences: list[dict], duration: float) -> list[tuple[float, float]]:
     """The complement of the silences inside [0, duration]."""
     out, t = [], 0.0

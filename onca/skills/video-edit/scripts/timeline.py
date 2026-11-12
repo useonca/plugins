@@ -29,7 +29,7 @@ def load(path: str | Path) -> dict:
     """The timeline with every path made absolute (paths in it are relative to its folder)."""
     path = Path(path)
     try:
-        tl = json.loads(path.read_text())
+        tl = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         print(f"timeline: cannot read {path}: {exc}", file=sys.stderr)
         raise SystemExit(2)
@@ -71,7 +71,7 @@ def fail_on(problems: list) -> None:
 
 def words_of(tl: dict) -> list:
     caps = tl.get("captions") or {}
-    by_src = {k: json.loads(Path(v).read_text()) for k, v in (caps.get("words") or {}).items()}
+    by_src = {k: json.loads(Path(v).read_text(encoding="utf-8")) for k, v in (caps.get("words") or {}).items()}
     return tlc.words_out(tl, by_src)
 
 
@@ -107,7 +107,7 @@ def caption_layer(tl: dict, output: dict, words: list, out_dir: Path) -> dict | 
     shell.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
                "-i", f"color=c=black@0.0:s={band['width']}x{band['height']},format=rgba", "-frames:v", "1", str(blank)])
     lst = folder / "captions.txt"
-    lst.write_text(tlc.caption_concat(states, pngs, str(blank), tlc.main_length(tl)))
+    lst.write_text(tlc.caption_concat(states, pngs, str(blank), tlc.main_length(tl)), encoding="utf-8")
     return {"list": str(lst), "x": band["left"], "y": band["top"], "groups": groups}
 
 
@@ -116,7 +116,7 @@ def render_timeline(tl: dict, out_dir: str | Path, encoder: str, draft: bool, du
     out_dir = Path(out_dir).resolve()  # the caption list names files by absolute path
     out_dir.mkdir(parents=True, exist_ok=True)
     length = tlc.main_length(tl)
-    name = tlc.pick_encoder(encoder, shell.encoders())
+    name = tlc.pick_encoder(encoder, shell.encoders_for(encoder))
     enc = DRAFT if draft else tlc.ENCODERS[name]
     shell.log(f"provider encode: local {'draft' if draft else name}")
     report = {"length": length, "encoder": "draft" if draft else name, "steps": {}, "outputs": {}}
@@ -138,7 +138,7 @@ def render_timeline(tl: dict, out_dir: str | Path, encoder: str, draft: bool, du
             shell.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *args])
         report["steps"][f"render {output['name']}"] = c.seconds
         report["outputs"][output["name"]] = str(out)
-    (out_dir / "render.json").write_text(json.dumps(report, indent=1))
+    (out_dir / "render.json").write_text(json.dumps(report, indent=1), encoding="utf-8")
     return report
 
 
@@ -152,7 +152,7 @@ def main() -> None:
     r = sub.add_parser("render")
     r.add_argument("timeline")
     r.add_argument("--dir", required=True)
-    r.add_argument("--encoder", default="auto", help="auto, videotoolbox, x264 or x264-fast")
+    r.add_argument("--encoder", default="auto", help=", ".join(("auto", *tlc.ENCODERS)))
     r.add_argument("--draft", action="store_true", help="a fast low-quality pass to look at")
     a = ap.parse_args()
     tl = load(a.timeline)
@@ -162,7 +162,7 @@ def main() -> None:
         print("ok")
     elif a.cmd == "words":
         words = words_of(tl)
-        Path(a.out).write_text(json.dumps(words, indent=1))
+        Path(a.out).write_text(json.dumps(words, indent=1), encoding="utf-8")
         shell.log(f"{len(words)} words on the output timeline -> {a.out}")
     else:
         try:

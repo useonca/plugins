@@ -8,7 +8,7 @@ For every video of every concept:
 - One change at a time: only one text element changes on screen at any moment. A headline lands and is read before the next element changes. Give each headline and card its full read time (at most 5 to 10 words a second, plus a beat). A longer video beats one too quick to follow.
 - Sound is part of the video: bundled or synthesized effects with a licence you can name; no copyrighted music or memes (draw a sticker instead). Narration, when used, comes from the `voice` skill.
 - No stock faces, no pricing unless the founder asks, no em or en dashes, only true product claims, no wording that overclaims (say "kept the whole night" if the history is 30 days, not "forever").
-- A passed engine check before every render: `sh "$ENGINE" check --json` in the project folder, `ENGINE` being the absolute path of the video-render skill's `scripts/engine`.
+- A passed engine check before every render: `ENGINE check --json` run from the project folder, `ENGINE` being the video-render skill's engine command (`PY` plus the absolute path of its `scripts/engine.py`).
 - AI video stays a minimum: at most a few seconds of a generated shot, only where nothing free can show it, and only after a free price check and the founder's yes for that exact run. Never a generated person.
 
 ## The shared brief
