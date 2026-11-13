@@ -4,6 +4,7 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 
 ## Skills
 
+- `onca-sign-in`: signs you in to Onca (or reconnects it after a plugin update); your AI client opens the sign-in page in your browser for you.
 - `launch-video`: the method, from facts to the posted video (start here).
 - `video-render`: the render contract and the local, pinned render engine.
 - `video-edit`: Onca's local editor: map a raw recording, cut it fast, clean the voice, and lay in cutaways, picture-in-picture, music and captions from one timeline.
