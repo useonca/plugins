@@ -61,3 +61,4 @@ Local video is meant for Windows 11 on an x64 PC (Windows 10 support ended on 14
 - Free only: no paid generation, no cloud render, nothing that spends, unless the founder said yes to that exact run after a free price check (the Onca content guide says how).
 - Real UI and demo data only; never the founder's real customer data, a password or a secret on screen.
 - Work in a project folder of its own (one per concept); never write into this plugin's folders.
+- Never run the `hyperframes` skill's `locate.mjs auto`: it uploads the picture to Google and bills the founder's own Gemini key. Use only its free grid loop (`overlay`, `region`, `final`, `mark`).

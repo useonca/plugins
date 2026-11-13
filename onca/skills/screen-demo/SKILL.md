@@ -1,6 +1,6 @@
 ---
 name: screen-demo
-description: Onca production kit. Make polished product footage yourself, end to end, with no founder step - rebuild the product's screens from its source and animate them, or record the running web app in a headless browser - then polish any footage with an auto zoom to each click, a smoothed enlarged cursor, a styled stage and motion blur, and build long chaptered, narrated 16:9 demos for YouTube with captions. Free and local on the founder's Mac or Windows PC. Use when a video needs product footage, a screen recording, a demo, a walkthrough, a product tour, a YouTube demo or tutorial, or when a client is about to ask the founder to record, stage or type demo data.
+description: Onca production kit. Make polished product footage yourself, end to end, with no founder step - rebuild the product's screens from its source and animate them, or record the running web app in a headless browser - then polish any footage with an auto zoom to each click, a smoothed enlarged cursor, a styled stage and motion blur, and build long chaptered, narrated 16:9 demos for YouTube with captions. Free and local on the founder's Mac or Windows PC. Use when a video needs product footage, a screen recording, a demo, a walkthrough, a product tour, a YouTube demo or tutorial, or when a client is about to ask the founder to record, stage or type demo data. Run every HyperFrames command through the video-render skill's pinned engine.py, never npx hyperframes.
 ---
 
 # Screen demo (Onca production kit)

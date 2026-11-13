@@ -1,6 +1,6 @@
 ---
 name: motion-kit
-description: Onca production kit. Tested motion parts for short videos (word-by-word headlines, highlight boxes, captions on the voice, rolling counters, a tilted card grid, pop-ins, slapped-on labels, whips, charts drawing in, focus pulls, spotlight stages, chat bubbles, one shape morphing into the next), a licensed pack of props, paper, fonts and sound effects, and tools that place the effects on the motion, snap cues to the music's beats, record the music bed's licence and cut product photos out, free and local. Use when a video should look like a pro reel, when the founder shares a reference video to copy, or when a composition needs motion, props, sound effects or a music bed.
+description: Onca production kit. Tested motion parts for short videos (word-by-word headlines, highlight boxes, captions on the voice, rolling counters, a tilted card grid, pop-ins, slapped-on labels, whips, charts drawing in, focus pulls, spotlight stages, chat bubbles, one shape morphing into the next), a licensed pack of props, paper, fonts and sound effects, and tools that place the effects on the motion, snap cues to the music's beats, record the music bed's licence and cut product photos out, free and local. Use when a video should look like a pro reel, when the founder shares a reference video to copy, or when a composition needs motion, props, sound effects or a music bed. Run every HyperFrames command through the video-render skill's pinned engine.py, never npx hyperframes.
 ---
 
 # Motion kit (Onca production kit)

@@ -12,7 +12,6 @@ Pure: no files, no subprocesses (shell.run_provider runs a command).
 from __future__ import annotations
 
 import re
-from pathlib import PurePath
 
 import core
 import timeline_core as tlc
@@ -23,6 +22,15 @@ FORMATS = {"transcribe": "words", "voice": "wav", "separate": "stems", "encode":
 PAID_CLIS = {"higgsfield", "hf", "higgs", "elevenlabs", "heygen", "openai"}
 LOCAL_ENCODERS = ("auto", *tlc.ENCODERS)
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
+WINDOWS_SUFFIXES = (".exe", ".cmd", ".bat", ".ps1")
+SCRIPT_SUFFIXES = (".sh", ".py", ".js", ".mjs", ".cjs", ".ts")  # a paid tool run as a script by its launcher
+# Programs that run other programs from their arguments (a shell's code, `npx x`, `env A=1 x`, `find -exec x`).
+LAUNCHERS = {"sh", "bash", "zsh", "dash", "fish", "cmd", "powershell", "pwsh", "env", "exec", "eval", "command",
+             "nice", "nohup", "timeout", "time", "sudo", "xargs", "find", "npx", "pnpx", "bunx", "uvx", "pipx", "uv",
+             "npm", "pnpm", "yarn", "bun", "deno", "node", "python", "python3", "py"}
+SEPARATOR = re.compile(r"[\\/]")
+# Inside a launcher's arguments, anything that is not part of a name or path splits words (shell syntax, quotes, `=`).
+CODE_SPLIT = re.compile(r"[\s;&|()`<>{}!\"'$=,]+")
 
 
 def validate(config: dict) -> list:
@@ -58,15 +66,42 @@ def validate(config: dict) -> list:
     return problems
 
 
+def program_name(word: str) -> str:
+    """The program a word names: `C:\\Tools\\HeyGen.EXE` -> heygen, `higgsfield@latest` -> higgsfield, `heygen.sh` -> heygen."""
+    name = SEPARATOR.split(word.strip("'\""))[-1].lower().split("@")[0]
+    for suffix in WINDOWS_SUFFIXES + SCRIPT_SUFFIXES:
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def _names(word: str) -> tuple:
+    """The program names a word may stand for: a scoped package `@heygen/cli` gives both parts."""
+    if word.startswith("@") and "/" in word:
+        scope, _, rest = word[1:].partition("/")
+        return program_name(scope), program_name(rest)
+    return (program_name(word),)
+
+
 def paid_cli(argv: list) -> str | None:
-    """The paid service a command would run: the program itself (`/opt/bin/heygen`), or a command name anywhere
-    after a launcher (`npx higgsfield`, `sh -c "elevenlabs ..."`); else None. A path argument (`/models/hf`) is
-    data, not a command."""
-    names = [PurePath(argv[0]).name] + [w for arg in argv[1:] for w in arg.split() if "/" not in w]
-    for name in names:
-        name = name.strip("'\"").lower().split("@")[0]
-        if name in PAID_CLIS:
-            return name
+    """The paid service a command would run, else None. argv[0] is checked by its last path part (`/opt/bin/heygen`,
+    `heygen.exe`). Once a launcher runs (`sh -c`, `npx`, `env`, `cmd /c`, ...), its arguments are code: every word in
+    them is checked by its last path part, wherever it stands (`sh -c "cd /tmp && /x/heygen"`). Without a launcher, a
+    word with a path separator is data (`demucs --repo /models/hf`) and only plain names (`openai`) and scoped
+    packages are checked."""
+    first = argv[0].strip("'\"")
+    launched = program_name(first) in LAUNCHERS
+    words = [w for arg in argv[1:] for w in arg.split()]
+    if not launched and any(program_name(w) in LAUNCHERS for w in words if not SEPARATOR.search(w)):
+        launched = True
+    if launched:
+        words = [w for arg in argv[1:] for w in CODE_SPLIT.split(arg) if w]
+    for word in [first] + words:
+        word = word.strip("'\"")
+        if launched or word is first or not SEPARATOR.search(word) or word.startswith("@"):
+            for name in _names(word):
+                if name in PAID_CLIS:
+                    return name
     return None
 
 

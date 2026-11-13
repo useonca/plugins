@@ -49,7 +49,7 @@ def build_kokoro_command(
         raise ValueError("the text to say is blank")
     if not 0.5 <= speed <= 2.0:
         raise ValueError(f"speed must be from 0.5 to 2.0, not {speed}")
-    return ["uv", "run", "--python", "3.12", "--with", "kokoro-onnx==0.6.1", "--with", "soundfile",
+    return ["uv", "run", "--python", "3.12", "--with", "kokoro-onnx==0.6.1", "--with", "soundfile==0.13.1",
             str(HERE / "kokoro_say.py"), "--text", text, "--out", str(out_wav), "--voice", voice,
             "--speed", f"{speed:g}", "--cache", str(cache_dir or KOKORO_CACHE)]
 

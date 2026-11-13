@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://mcp.useonca.com/mcp",
       "headers": {
-        "X-Onca-Plugin": "1.4.0"
+        "X-Onca-Plugin": "1.4.1"
       }
     }
   }

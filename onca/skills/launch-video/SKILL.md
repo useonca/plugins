@@ -1,6 +1,6 @@
 ---
 name: launch-video
-description: Onca's method for a product launch, ad or social video, made free on the founder's Mac or Windows PC from the product's real UI. Starts from Onca's video templates (list_templates, get_template) and checks Onca is signed in; falls back to researched creative mechanisms. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product.
+description: Onca's method for a product launch, ad or social video, made free on the founder's Mac or Windows PC from the product's real UI. Starts from Onca's video templates (list_templates, get_template) and checks Onca is signed in; falls back to researched creative mechanisms. Hook, info, closure; research creative mechanisms; five concepts on five different mechanisms; the founder picks; parallel builds; a contact-sheet self-review; the founder watches with sound on; save to the Onca library and post with the founder's approval. Use for any launch video, product video, ad creative, reel, TikTok or Short about a software product. Run every HyperFrames command through the video-render skill's pinned engine.py, never npx hyperframes.
 ---
 
 # Launch video
