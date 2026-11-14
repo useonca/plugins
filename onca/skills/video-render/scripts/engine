@@ -1,0 +1,5 @@
+#!/bin/sh
+# Run the pinned render engine (HyperFrames, see ../ENGINE.json): `sh engine <command> [args]`, e.g.
+# `sh engine check --json`. Mac and Linux wrapper; on Windows run engine.py with `py -3 -X utf8`. See engine.py.
+DIR=$(cd "$(dirname "$0")" && pwd)
+exec python3 "$DIR/engine.py" "$@"

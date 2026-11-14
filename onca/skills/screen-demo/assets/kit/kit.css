@@ -1,0 +1,67 @@
+/* Onca screen kit: the chrome around a screen rebuilt from source (rung 1). CSS only, no trademark images:
+ * a macOS desktop, menu bar (optional notch) and window, an iPhone-style frame, a browser frame.
+ * The product's own look (colours, fonts, copy, spacing) comes from its source via tokens.py, never from here.
+ * Sizes are logical pixels; flow.py scales the whole flow by its dpr. */
+
+#onca-flow { position: relative; overflow: hidden; font-family: system-ui, -apple-system, Inter, sans-serif;
+  -webkit-font-smoothing: antialiased; color: #1d1d1f; }
+#onca-flow [data-screen] { position: absolute; inset: 0; }
+#onca-flow * { box-sizing: border-box; }
+
+/* Flow states (flow.js adds these). */
+.onca-pressed { filter: brightness(0.9); transform: scale(0.97); }
+.onca-typing { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.45); }
+
+/* Keystroke overlay for key steps (an annotation of the video, not product UI). */
+#onca-keys { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 50; opacity: 0;
+  padding: 10px 20px; border-radius: 14px; background: rgba(20, 20, 24, 0.82); color: #fff; font-size: 26px;
+  font-weight: 600; letter-spacing: 0.04em; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+#onca-keys.on { opacity: 1; }
+
+/* macOS desktop and menu bar. */
+.mac-desktop { position: absolute; inset: 0; background: linear-gradient(160deg, #2b3a55 0%, #5a4a6e 55%, #c98b6b 100%); }
+.mac-menubar { position: absolute; left: 0; right: 0; top: 0; height: 24px; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 12px; font-size: 13px; color: #fff; z-index: 10;
+  background: rgba(30, 30, 36, 0.35); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.mac-menubar .left, .mac-menubar .right { display: flex; align-items: center; gap: 16px; }
+.mac-menubar .app { font-weight: 700; }
+.mac-menubar .item.active { background: rgba(255, 255, 255, 0.22); border-radius: 4px; padding: 1px 6px; margin: 0 -6px; }
+.mac-notch { position: absolute; left: 50%; top: 0; width: 196px; height: 32px; margin-left: -98px; background: #000;
+  border-radius: 0 0 12px 12px; z-index: 11; }
+
+/* macOS window. */
+.mac-window { position: absolute; border-radius: 10px; overflow: hidden; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.35), 0 22px 70px rgba(0, 0, 0, 0.45); }
+.mac-window.dark { background: #1e1e22; color: #f5f5f7; }
+.mac-titlebar { height: 28px; display: flex; align-items: center; padding: 0 12px; gap: 8px; position: relative;
+  background: rgba(246, 246, 246, 0.92); border-bottom: 0.5px solid rgba(0, 0, 0, 0.12); }
+.mac-window.dark .mac-titlebar { background: rgba(40, 40, 44, 0.95); border-bottom-color: rgba(255, 255, 255, 0.08); }
+.mac-lights { display: flex; gap: 8px; }
+.mac-lights i { width: 12px; height: 12px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.2); }
+.mac-lights i:nth-child(1) { background: #ff5f57; }
+.mac-lights i:nth-child(2) { background: #febc2e; }
+.mac-lights i:nth-child(3) { background: #28c840; }
+.mac-title { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 600; opacity: 0.85; pointer-events: none; }
+.mac-panel { position: absolute; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(30px) saturate(1.4); -webkit-backdrop-filter: blur(30px) saturate(1.4); }
+
+/* iPhone-style frame (a generic phone outline, no device artwork). */
+.ios-frame { position: absolute; width: 390px; height: 844px; border-radius: 55px; background: #fff; overflow: hidden;
+  box-shadow: 0 0 0 11px #111, 0 0 0 13px #2a2a2e, 0 30px 80px rgba(0, 0, 0, 0.45); }
+.ios-status { position: absolute; left: 0; right: 0; top: 0; height: 54px; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 30px 0 38px; font-size: 16px; font-weight: 600; z-index: 10; }
+.ios-island { position: absolute; left: 50%; top: 11px; width: 126px; height: 37px; margin-left: -63px; background: #000;
+  border-radius: 20px; z-index: 11; }
+.ios-home { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; background: #111;
+  border-radius: 3px; z-index: 10; }
+.ios-frame.dark .ios-home { background: #fff; }
+
+/* Browser frame (generic, no browser branding). */
+.browser-frame { position: absolute; border-radius: 10px; overflow: hidden; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.3), 0 22px 70px rgba(0, 0, 0, 0.4); }
+.browser-bar { height: 40px; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: #ececec;
+  border-bottom: 1px solid #d6d6d6; }
+.browser-url { flex: 1; height: 26px; border-radius: 7px; background: #fff; display: flex; align-items: center;
+  padding: 0 12px; font-size: 13px; color: #555; }
+.browser-body { position: absolute; left: 0; right: 0; top: 40px; bottom: 0; overflow: hidden; }

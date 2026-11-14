@@ -1,0 +1,45 @@
+Onca plugin
+Copyright (c) 2026 Onca
+
+This plugin includes third-party files that keep their own licences:
+
+HyperFrames by HeyGen, version 0.8.222
+  Source: https://github.com/heygen-com/hyperframes
+  Licence: Apache License 2.0, full text in LICENSES/hyperframes-Apache-2.0.txt
+  Files: skills/hyperframes/ and skills/hyperframes-cli/, copied unmodified from HyperFrames' own skills
+  (its *.test.mjs files left out); every copied file and its sha256 are listed in skills/video-render/ENGINE.json.
+  HyperFrames' own repository ships no NOTICE file.
+
+The render engine itself is not bundled: skills/video-render/scripts/engine.py runs `npx hyperframes@0.8.222`, which
+the founder's own npm downloads from the npm registry under HyperFrames' licence. Models used for transcription
+and narration are downloaded by the founder's own tools from their publishers and are not redistributed here.
+
+Credits for tools and ideas the video-edit skill uses but does not bundle:
+
+- Demucs (Meta, MIT licence) and its Apple Silicon port demucs-mlx (MIT): the optional voice separation, installed
+  by the founder with `uv tool install demucs-mlx`; its model weights are downloaded by that tool.
+- parakeet-tdt-0.6b-v3 (NVIDIA, CC-BY-4.0, https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), run through
+  parakeet-mlx: the word-timed transcript. The transcript is a working file, never shipped in a video.
+- On Windows, whisper-ctranslate2 (MIT) with faster-whisper and CTranslate2 (MIT) and OpenAI's Whisper weights (MIT)
+  do the word-timed transcript, and Demucs (MIT) the voice separation, installed by the founder with `uv tool install`.
+- Kokoro-82M (Apache-2.0, https://huggingface.co/hexgrad/Kokoro-82M) through kokoro-onnx (MIT): the built-in
+  narration voice off the Mac, fetched once by `uv run`; Chatterbox (Resemble AI, MIT) for the founder's own voice.
+- video-use (browser-use, MIT, https://github.com/browser-use/video-use): the ideas of a packed, text-first
+  transcript for planning, word-boundary cuts with short padding, short fades at every cut, and output-timeline
+  offsets for captions.
+- FFmpeg (LGPL / GPL, installed by the founder) does every cut, mix and encode.
+
+Files bundled in skills/motion-kit/assets/ (each file's source, author, licence link and retrieval date are
+listed in skills/motion-kit/assets/LICENSES.json):
+
+- DM Serif Display (Adobe; Google LLC) and Caveat (The Caveat Project Authors): SIL Open Font License 1.1, full
+  texts in skills/motion-kit/assets/fonts/OFL-DMSerifDisplay.txt and OFL-Caveat.txt.
+- Sound effects from Kenney's Interface Sounds, UI Audio, Impact Sounds and Sci-fi Sounds (https://kenney.nl,
+  CC0 1.0, its License.txt in skills/motion-kit/assets/sfx/) and from the OpenGameArt pages "Air Whoosh"
+  (pyranostudios) and "Swishes Sound Pack" (artisticdude), both CC0 1.0; trimmed and level-matched by Onca.
+- Paper textures Paper001, Paper002, Paper003 and Paper006 from ambientCG (https://ambientcg.com, CC0 1.0),
+  converted to greyscale and resized by Onca.
+- The props (skills/motion-kit/assets/props/) are drawn by Onca and released under CC0 1.0.
+
+The motion-kit cut-out tool runs Apple's Vision framework on the founder's Mac, or rembg (MIT) with the
+isnet-general-use model (Apache 2.0), which the founder's own uv downloads; neither is bundled here.

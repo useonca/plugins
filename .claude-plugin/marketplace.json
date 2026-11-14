@@ -1,0 +1,15 @@
+{
+  "name": "onca",
+  "description": "The Onca plugin for Claude Code, Codex and Claude Desktop: Onca's tools plus video work that runs on the founder's computer (a Mac or a Windows PC).",
+  "owner": {
+    "name": "Onca",
+    "url": "https://useonca.com"
+  },
+  "plugins": [
+    {
+      "name": "onca",
+      "source": "./onca",
+      "description": "Onca for your AI client: its tools (connections, scheduling, results) and free product videos made on your Mac or Windows PC: video skills that load Onca's method while you are signed in, local rendering to 9:16 video, a local video editor and local narration."
+    }
+  ]
+}

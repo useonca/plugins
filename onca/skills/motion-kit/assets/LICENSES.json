@@ -1,0 +1,371 @@
+[
+ {
+  "path": "fonts/Caveat.ttf",
+  "source": "https://github.com/google/fonts/tree/main/ofl/caveat",
+  "author": "The Caveat Project Authors",
+  "licence": "OFL-1.1",
+  "licence_url": "https://openfontlicense.org/open-font-license-official-text/",
+  "retrieved": "2026-11-12",
+  "notes": "the variable font Caveat[wght].ttf, renamed file only; licence text in fonts/OFL-Caveat.txt"
+ },
+ {
+  "path": "fonts/DMSerifDisplay-Regular.ttf",
+  "source": "https://github.com/google/fonts/tree/main/ofl/dmserifdisplay",
+  "author": "Adobe; Google LLC",
+  "licence": "OFL-1.1",
+  "licence_url": "https://openfontlicense.org/open-font-license-official-text/",
+  "retrieved": "2026-11-12",
+  "notes": "unmodified; licence text in fonts/OFL-DMSerifDisplay.txt"
+ },
+ {
+  "path": "paper/card.jpg",
+  "source": "https://ambientcg.com/view?id=Paper002",
+  "author": "ambientCG (Lennart Demes)",
+  "licence": "CC0-1.0",
+  "licence_url": "https://docs.ambientcg.com/license/",
+  "retrieved": "2026-11-12",
+  "notes": "the 1K colour map of Paper002, made greyscale at 1024 px; tinted by CSS"
+ },
+ {
+  "path": "paper/crumpled.jpg",
+  "source": "https://ambientcg.com/view?id=Paper003",
+  "author": "ambientCG (Lennart Demes)",
+  "licence": "CC0-1.0",
+  "licence_url": "https://docs.ambientcg.com/license/",
+  "retrieved": "2026-11-12",
+  "notes": "the 1K colour map of Paper003, made greyscale at 1024 px; tinted by CSS"
+ },
+ {
+  "path": "paper/kraft.jpg",
+  "source": "https://ambientcg.com/view?id=Paper006",
+  "author": "ambientCG (Lennart Demes)",
+  "licence": "CC0-1.0",
+  "licence_url": "https://docs.ambientcg.com/license/",
+  "retrieved": "2026-11-12",
+  "notes": "the 1K colour map of Paper006, made greyscale at 1024 px; tinted by CSS"
+ },
+ {
+  "path": "paper/white.jpg",
+  "source": "https://ambientcg.com/view?id=Paper001",
+  "author": "ambientCG (Lennart Demes)",
+  "licence": "CC0-1.0",
+  "licence_url": "https://docs.ambientcg.com/license/",
+  "retrieved": "2026-11-12",
+  "notes": "the 1K colour map of Paper001, made greyscale at 1024 px; tinted by CSS"
+ },
+ {
+  "path": "props/binder-clip.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/bubble-tail-in.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/bubble-tail-out.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/cutting-mat.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/paper-clip.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/pin.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/polaroid.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-arrow.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-burst.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-heart.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-smile.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-sparkle.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticker-star.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/sticky-note.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "props/tape.svg",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "drawn by Onca for this kit"
+ },
+ {
+  "path": "sfx/impact.wav",
+  "source": "https://kenney.nl/assets/sci-fi-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from low_frequency_explosion_001.ogg, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Boyquotes/kenney-sci-fi-sounds-for-godot"
+ },
+ {
+  "path": "sfx/key-1.wav",
+  "source": "https://kenney.nl/assets/ui-audio",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from click3.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-ui-audio"
+ },
+ {
+  "path": "sfx/key-2.wav",
+  "source": "https://kenney.nl/assets/ui-audio",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from click1.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-ui-audio"
+ },
+ {
+  "path": "sfx/notification.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from confirmation_004.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/pop-1.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from pluck_001.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/pop-2.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from pluck_002.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/pop-3.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from drop_002.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/received.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from confirmation_001.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/riser.wav",
+  "source": "https://kenney.nl/assets/sci-fi-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from low_frequency_explosion_000.ogg played backwards, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Boyquotes/kenney-sci-fi-sounds-for-godot"
+ },
+ {
+  "path": "sfx/sent.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from maximize_004.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/tap-1.wav",
+  "source": "https://kenney.nl/assets/impact-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from impact_soft_medium_000.ogg, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Boyquotes/kenney-impact-sounds-for-godot"
+ },
+ {
+  "path": "sfx/tap-2.wav",
+  "source": "https://kenney.nl/assets/impact-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from impact_soft_medium_001.ogg, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Boyquotes/kenney-impact-sounds-for-godot"
+ },
+ {
+  "path": "sfx/tick-1.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from tick_001.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/tick-2.wav",
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "author": "Kenney",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from tick_002.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS; copied from the CC0 mirror https://github.com/Calinou/kenney-interface-sounds"
+ },
+ {
+  "path": "sfx/typing.wav",
+  "source": "Onca",
+  "author": "Onca",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "our arrangement of Kenney UI Audio click1 to click5 (CC0, https://kenney.nl/assets/ui-audio), released under CC0"
+ },
+ {
+  "path": "sfx/whoosh-1.wav",
+  "source": "https://opengameart.org/content/air-whoosh",
+  "author": "pyranostudios",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from the second whoosh of whoosh2_0.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS"
+ },
+ {
+  "path": "sfx/whoosh-2.wav",
+  "source": "https://opengameart.org/content/air-whoosh",
+  "author": "pyranostudios",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from the third whoosh of whoosh2_0.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS"
+ },
+ {
+  "path": "sfx/whoosh-3.wav",
+  "source": "https://opengameart.org/content/air-whoosh",
+  "author": "pyranostudios",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from the fourth whoosh of whoosh2_0.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS"
+ },
+ {
+  "path": "sfx/whoosh-short-1.wav",
+  "source": "https://opengameart.org/content/swishes-sound-pack",
+  "author": "artisticdude",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from swish-9.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS"
+ },
+ {
+  "path": "sfx/whoosh-short-2.wav",
+  "source": "https://opengameart.org/content/swishes-sound-pack",
+  "author": "artisticdude",
+  "licence": "CC0-1.0",
+  "licence_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-11-12",
+  "notes": "from swish-3.wav, converted to 48 kHz mono and peak-normalised to -1 dBFS"
+ }
+]
