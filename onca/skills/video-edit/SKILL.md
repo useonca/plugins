@@ -7,7 +7,7 @@ description: Onca's local video editor. Turns a raw talking video (a person on c
 
 # Video edit
 
-Turn raw talking footage into a finished video in 9:16 and 16:9. Everything runs on the founder's Mac or Windows PC for free. Never call a paid service (Higgsfield, HeyGen, ElevenLabs, OpenAI or any other pay-per-use API) from this skill: a paid result comes in only through Onca's approval and spend caps, then as a `file` provider (below).
+Turn raw talking footage into a finished video in 9:16 and 16:9. Everything runs on the founder's Mac or Windows PC for free. Never call a paid service (Higgsfield, HeyGen, ElevenLabs, OpenAI or any other pay-per-use API) from this skill: a paid result comes in only through Onca's approval and the founder's budget and caps, then as a `file` provider (below).
 
 The decisions are yours (what to keep, which take, what goes on screen when); the scripts only measure, build and render. The founder approves a preview and the cut list before any final render, and never records, stages or edits by hand.
 
