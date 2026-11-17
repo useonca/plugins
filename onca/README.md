@@ -17,7 +17,7 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 
 ## Install
 
-If an Onca server is already signed in (the plugin's onca or the claude.ai connector claude_ai_onca), use it and do not sign in again.
+If Onca's whoami tool is available and a call to it succeeds (the plugin's onca or the claude.ai connector claude_ai_onca), Onca is already signed in: use it and do not sign in again.
 
 Claude Code:
 
@@ -26,7 +26,9 @@ claude plugin marketplace add useonca/plugins
 claude plugin install onca@onca
 ```
 
-Then run `/reload-plugins`, then `/mcp`, choose onca and Authenticate.
+If the add says "SSH not configured, cloning via HTTPS", that is harmless. If `claude plugin list` also shows `onca@synced` (a copy synced from claude.ai), run `claude plugin disable onca@synced`, so there is one Onca server and one set of Onca skills.
+
+Then run `/reload-plugins`. Claude then calls the plugin's `authenticate` tool and opens the sign-in link (it also shows the full link); check the account at the top of the Onca page, Switch account if it is not yours, and approve. If there is no `authenticate` tool and Onca's `whoami` fails, run `/mcp`, choose onca and Authenticate.
 
 Codex:
 

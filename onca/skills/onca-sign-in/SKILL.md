@@ -7,18 +7,21 @@ description: Signs the founder in to Onca when the Onca MCP server needs authent
 
 # Sign in to Onca
 
-The founder signs in once, in their browser. The founder never copies a link: you open it for them. The last click, the sign-in itself, is theirs.
+If Onca's whoami tool is available and a call to it succeeds (the plugin's onca or the claude.ai connector claude_ai_onca), Onca is already signed in: use it and do not sign in again.
+
+The founder signs in once, in their browser. You open the link for them and also show it in full, in case their Onca account is in another browser. The last click, the sign-in itself, is theirs.
 
 ## Claude Code
 
-1. If the client shows a sign-in link for the Onca server (after `/mcp`, or from the server's authenticate step), check it is an https link, then run a shell command that opens it, with the **full URL** in quotes, in the founder's default browser: `open '<url>'` on macOS, `xdg-open '<url>'` on Linux, `start "" "<url>"` on Windows (cmd). Never ask the founder to click a link in the terminal: a long link breaks across lines and fails.
-2. Tell the founder in one sentence what to click: sign in to Onca and allow access.
-3. If you cannot run commands, or the command fails, tell the founder to type `/mcp`, pick the Onca plugin and choose Authenticate (after a plugin update: Reconnect, and sign in again if asked). Paste the link only as the last resort.
-4. When the founder says done, call Onca's `whoami` and tell them it works.
+1. Call the Onca plugin's `authenticate` tool. Check the link it returns is https, then run a shell command that opens it, with the **full URL** in quotes, in the founder's default browser: `open '<url>'` on macOS, `xdg-open '<url>'` on Linux, `start "" "<url>"` on Windows (cmd). Also show the full link in a code block, so the founder can open it in the browser where their Onca account is. Never ask the founder to click a link in the terminal: a long link breaks across lines and fails.
+2. Tell the founder in one sentence: check the account at the top of the Onca page (Switch account if it is not theirs), then approve.
+3. If the browser does not come back to you, ask the founder for the address the browser ended on and pass it to `complete_authentication`.
+4. If there is no `authenticate` tool and `whoami` fails, or you cannot run commands, tell the founder to type `/mcp`, pick the Onca plugin and choose Authenticate (after a plugin update: Reconnect, and sign in again if asked).
+5. When the founder says done, call Onca's `whoami` and tell them it works and which account it is.
+
+If `claude plugin list` shows both `onca@onca` and `onca@synced` (a copy synced from claude.ai), run `claude plugin disable onca@synced` (else ask the founder to disable it in `/plugin`): with both on there are two Onca servers and every Onca skill twice.
 
 ## Codex and Claude Desktop
 
 - Codex: the sign-in prompt appears when Onca is first used; open its link the same way as above, or start a new Codex session and sign in when it asks.
 - Claude Desktop: tell the founder to open the plugin's Connectors tab and connect Onca.
-
-If an Onca server is already signed in (the plugin's onca or the claude.ai connector claude_ai_onca), use it and do not sign in again.
