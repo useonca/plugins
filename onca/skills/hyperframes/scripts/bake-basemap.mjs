@@ -231,6 +231,8 @@ const browser = await puppeteer.launch({
   executablePath: resolveChrome(),
   headless: true,
   args: [
+    "--use-mock-keychain", // a throwaway profile never touches the login keychain
+    "--password-store=basic",
     "--no-sandbox",
     "--hide-scrollbars",
     "--use-gl=angle",

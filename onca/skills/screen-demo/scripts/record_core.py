@@ -45,6 +45,10 @@ LISTENER_JS = r"""
 """
 
 
+# A throwaway profile never touches the macOS login keychain.
+KEYCHAIN_FLAGS = ("--use-mock-keychain", "--password-store=basic")
+
+
 def chrome_command(chrome: str, port: int, profile: str, size: tuple[int, int], headed: bool = False,
                    dpr: float = 1) -> list[str]:
     """Chrome with its own profile and a debugging port; headless unless asked. A `dpr` above 1 forces that
@@ -56,6 +60,7 @@ def chrome_command(chrome: str, port: int, profile: str, size: tuple[int, int], 
     if dpr != 1:
         cmd.append(f"--force-device-scale-factor={dpr:g}")
     cmd += [
+        *KEYCHAIN_FLAGS,
         f"--remote-debugging-port={port}",
         f"--user-data-dir={profile}",
         f"--window-size={w},{h}",

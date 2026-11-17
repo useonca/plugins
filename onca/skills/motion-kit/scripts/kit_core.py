@@ -1238,10 +1238,14 @@ def chrome_candidates(platform: str, env: dict) -> list:
     return ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]
 
 
+# A throwaway profile never touches the macOS login keychain.
+KEYCHAIN_FLAGS = ("--use-mock-keychain", "--password-store=basic")
+
+
 def shot_command(chrome, page_url: str, out, width: int, height: int, scale: float, profile) -> list:
     """Headless Chrome's own screenshot of a page at a device scale, on a transparent ground."""
     return [str(chrome), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
-            "--no-default-browser-check", f"--user-data-dir={profile}", f"--window-size={width},{height}",
+            *KEYCHAIN_FLAGS, "--no-default-browser-check", f"--user-data-dir={profile}", f"--window-size={width},{height}",
             f"--force-device-scale-factor={scale:g}", "--default-background-color=00000000", f"--screenshot={out}",
             page_url]
 
