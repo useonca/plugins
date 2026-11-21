@@ -9,5 +9,5 @@ description: Onca production kit: review your own video, image, carousel or post
 
 This skill's method is served by Onca, not shipped in the plugin, so it needs Onca signed in.
 
-1. Call Onca's get_video_guide with guide_id "content-review" and follow it: it says how to look at the content and how to report what works and what to improve. In Claude Code the content-review-agent does this for you; use this skill where there are no plugin agents.
+1. Call Onca's get_video_guide with guide_id "content-review" and follow it: it says how to look at the content and how to report what works and what to improve. For a video that includes a frame-by-frame look at every beat and cut boundary, not only contact sheets. In Claude Code the content-review-agent does this for you; use this skill where there are no plugin agents.
 2. If Onca's tools are missing or a call says sign-in is needed, use the onca-sign-in skill, then try again. Signed out, this skill has no method to follow: tell the founder that Onca must be signed in.

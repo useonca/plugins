@@ -45,8 +45,17 @@ def engine_command(
     return [npx, "--yes", f"hyperframes@{pin}", *args], env
 
 
+def with_render_defaults(args: Sequence[str]) -> list:
+    """``args`` with page motion blur off on every ``render``: it blends sub-frames across a scene change, so one frame
+    can show both scenes stacked or a grey veil. (The engine's flag takes only ``off``.)"""
+    args = list(args)
+    if args[:1] == ["render"] and not any(a.startswith("--page-motion-blur") for a in args):
+        args.append("--page-motion-blur=off")
+    return args
+
+
 def main(argv: Optional[list] = None) -> int:
-    args = list(sys.argv[1:] if argv is None else argv)
+    args = with_render_defaults(sys.argv[1:] if argv is None else argv)
     try:
         version = pin_file.engine_pin(pin_file.ENGINE_JSON)
         node = doctor.find_node22()
