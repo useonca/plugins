@@ -6,7 +6,7 @@
 
 This plugin connects your user to Onca. Start with get_launch_overview. Nothing publishes without your user approving the exact post.
 
-The Onca plugin for Claude Code, Codex and Claude Desktop, from Onca (https://useonca.com), an all-in-one online presence platform you run through your own AI agent, for a launch or a business already running. It carries Onca's hosted MCP (one install) and the video skills, which run on the founder's computer (a Mac or a Windows PC); Onca tells the client which version is current. In Claude Code the plugin's MCP declaration sends the header `X-Onca-Plugin: <plugin version>` (its own public version number, nothing else), so Onca can tell a client that has the plugin from one that does not and offer the install.
+The Onca plugin for Claude Code, Codex and Claude Desktop, from Onca (https://useonca.com), an all-in-one online presence platform you run through your own AI agent, for a launch or a business already running. It carries Onca's hosted MCP (one install) and the video skills, which run on the founder's computer (a Mac or a Windows PC); Onca tells the client which version is current. In Claude Code the plugin's MCP declaration sends the header `X-Onca-Plugin: <plugin version>` (its own public version number, nothing else; a small helper file, `onca-headers.json`, holds it, so an update keeps you signed in), so Onca can tell a client that has the plugin from one that does not and offer the install.
 
 | Plugin | What it does |
 |--------|--------------|

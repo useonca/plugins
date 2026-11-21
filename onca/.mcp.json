@@ -3,9 +3,7 @@
     "onca": {
       "type": "http",
       "url": "https://mcp.useonca.com/mcp",
-      "headers": {
-        "X-Onca-Plugin": "1.7.1"
-      }
+      "headersHelper": "cat \"${CLAUDE_PLUGIN_ROOT}/onca-headers.json\""
     }
   }
 }
