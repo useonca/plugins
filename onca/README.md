@@ -13,6 +13,7 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 - `voice`: free local narration (an M-series Mac, or Windows through Kokoro).
 - `screen-demo` (Onca production kit): product footage made from your product's own source or a headless recording, polished with auto zoom and a smooth cursor, and long chaptered YouTube demos with captions. You never record or stage anything.
 - `b-roll` (Onca production kit): moving shots from still photos (Onca's parallax or a pan and zoom) and code-made depth scenes, and where to cut them in.
+- `onca-start`: gets a new founder from the install to a first post waiting for approval (it points at `start_launch`).
 - `hyperframes`, `hyperframes-cli`: the render engine's own skills (HyperFrames, Apache 2.0, see NOTICE).
 
 ## Install
@@ -40,6 +41,8 @@ codex plugin add onca@onca
 Then start a new Codex session and sign in to Onca when it asks.
 
 Claude Desktop: Customize, Plugins, add the marketplace `useonca/plugins`, Discover, Install, then open the plugin's Connectors tab and connect Onca.
+
+Then call Onca's start_launch and follow it: do the work, ask me one simple question at a time, and get my first post ready for my approval.
 
 The plugin declares Onca's hosted MCP in `.mcp.json` (Claude Code) and `mcp.json` (Codex), so nothing else needs installing. Onca tells your client when a newer version is out and how to update. The video skills need Node 22+, ffmpeg and uv on the Mac or Windows PC; `python3 skills/video-render/scripts/doctor.py check` (Windows: `py -3 -X utf8 skills\video-render\scripts\doctor.py check`) lists what is missing, with the install command for each.
 
