@@ -9,6 +9,7 @@ One install for your AI client (Claude Code, Codex or Claude Desktop). It connec
 - `onca-sign-in`: signs you in to Onca (or reconnects it after a plugin update); your AI client opens the sign-in page in your browser for you.
 - `launch-video`: product launch, ad and social videos, from facts to the posted video (start here).
 - `video-render`: the render contract and the local, pinned render engine.
+- `content-review`: reviews your own video, image, carousel or post before the founder sees it and reports what works and what to improve, never approving, rejecting or editing; in Claude Code the `content-review-agent` does it.
 - `video-edit`: Onca's local editor for raw recordings: cuts, clean voice, cutaways, music and captions from one timeline.
 - `voice`: free local narration (an M-series Mac, or Windows through Kokoro).
 - `screen-demo` (Onca production kit): product footage made from your product's own source or a headless recording, polished with auto zoom and a smooth cursor, and long chaptered YouTube demos with captions. You never record or stage anything.

@@ -11,3 +11,4 @@ This skill's method is served by Onca, not shipped in the plugin, so it needs On
 
 1. Call Onca's get_video_guide with guide_id "video-edit" and follow it. Its paths start from this skill's folder: scripts are in scripts/.
 2. If Onca's tools are missing or a call says sign-in is needed, use the onca-sign-in skill, then try again. Signed out, this skill has no method to follow: tell the founder that Onca must be signed in.
+3. Before the founder sees what you made, review it: with Claude Code ask the content-review-agent, elsewhere use the content-review skill; fix what it reports, then review again.
