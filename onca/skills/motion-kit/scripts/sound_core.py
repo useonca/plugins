@@ -48,6 +48,8 @@ def _default_hits(c: dict) -> list:
         return [(s["at"], "whoosh-short") for s in (p.get("states") or [])[1:]]
     if part == "scene":
         return {"cut": [], "whip": [(0, "whoosh")]}.get(p.get("kind", "slide"), [(0, "whoosh-short")])
+    if part == "type":
+        return [(0, "typing")]
     return []
 
 

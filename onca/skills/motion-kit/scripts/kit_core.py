@@ -22,14 +22,17 @@ import core as edit_core  # noqa: E402  (video-edit's pure core: caption groups,
 
 VERSION = 1
 PARTS = ("words", "highlight", "captions", "odometer", "card-grid", "pop", "drop", "move", "chart", "focus",
-         "spotlight", "bubble", "morph", "scene")
-SCENE_KINDS = ("cut", "slide", "whip", "tear")
+         "spotlight", "bubble", "morph", "scene", "draw", "tilt", "type", "drift")
+SCENE_KINDS = ("cut", "slide", "whip", "tear", "focus", "zoom", "fade")
 SCENE_FROM = ("left", "right", "up", "down")
 SFX = ("whoosh", "whoosh-short", "pop", "tick", "key", "typing", "sent", "received", "notification", "tap",
        "riser", "impact")
 # Default lengths (seconds) of the parts whose sound depends on their length; motion.js holds the same numbers.
 DUR = {"odometer": 1.4, "drop": 0.28, "move": 0.6, "focus": 0.6}
-EASES = ("linear", "outCubic", "outQuart", "outExpo", "inCubic", "inOutQuad")
+EASES = ("linear", "outCubic", "outQuart", "outExpo", "inCubic", "inOutQuad", "inQuart", "inOutCubic", "outQuint")
+CAPTION_STYLES = ("box", "plain", "reel")
+CAPTION_POSITIONS = ("top", "middle", "bottom")
+REEL_MAX_WORDS, REEL_MAX_CHARS = 8, 42  # a reel caption holds its beat's phrase
 SNAPS = ("beat", "bar")
 BEAT_CONFIDENCE = 0.5
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
@@ -191,7 +194,9 @@ def validate_cues(doc, ids) -> list:
 # Params the runtime and the sound placement do arithmetic with (from / to are objects for move, numbers for
 # odometer: checked per part below).
 NUMBER_PARAMS = ("gap", "pad", "draw", "stagger", "tilt", "wave_speed", "lift", "from_scale", "rotate",
-                 "rotate_from", "damping", "freq", "from_blur", "cone_x", "cone_w", "typing", "dur", "stretch", "blur")
+                 "rotate_from", "damping", "freq", "from_blur", "cone_x", "cone_w", "typing", "dur", "stretch", "blur",
+                 "rx", "ry", "from_rx", "from_ry", "z", "perspective", "cps", "dim")
+TEXT_PARAMS = ("text", "origin")
 COUNT_PARAMS = ("max_words", "max_chars", "rows", "cols")
 
 
@@ -201,6 +206,11 @@ def _param_problems(where: str, c: dict) -> list:
     for key in NUMBER_PARAMS:
         if key in p and not _num(p[key]):
             out.append(f"{where}: params.{key} must be a number, got {p[key]!r}")
+    for key in TEXT_PARAMS:
+        if key in p and not isinstance(p[key], str):
+            out.append(f"{where}: params.{key} must be text, got {p[key]!r}")
+    if "ease" in p and p["ease"] not in EASES:
+        out.append(f"{where}: unknown ease {p['ease']!r} (one of {', '.join(EASES)})")
     for key in COUNT_PARAMS:
         if key in p and not (_num(p[key]) and p[key] >= 1 and float(p[key]).is_integer()):
             out.append(f"{where}: params.{key} must be a whole number, 1 or more, got {p[key]!r}")
@@ -215,12 +225,12 @@ def _param_problems(where: str, c: dict) -> list:
         out.append(f"{where}: params.from must be a number, got {p['from']!r}")
     if part == "odometer" and not _num(p.get("to")):
         out.append(f"{where}: an odometer needs params.to (a number)")
-    if part == "move":
-        if "ease" in p and p["ease"] not in EASES:
-            out.append(f"{where}: unknown ease {p['ease']!r} (one of {', '.join(EASES)})")
+    if part in ("move", "drift"):
         for side in ("from", "to"):
             if side in p and not isinstance(p[side], dict):
-                out.append(f"{where}: params.{side} must be an object of x, y, scale, rotate, opacity, blur")
+                out.append(f"{where}: params.{side} must be an object of x, y, scale, rotate, opacity, blur, w, h")
+    if part == "captions":
+        out += _caption_problems(where, p)
     if part == "pop" and p.get("each") and not SIMPLE_SELECTOR.fullmatch(str(p["each"])):
         out.append(f"{where}: params.each must be a .class or a tag name, got {p['each']!r}")
     if part == "chart" and not (isinstance(p.get("values"), list) and p["values"] and all(_num(v) for v in p["values"])):
@@ -233,6 +243,25 @@ def _param_problems(where: str, c: dict) -> list:
             ats = [s.get("at") if isinstance(s, dict) else None for s in states]
             if not all(_num(a) for a in ats) or ats != sorted(ats):
                 out.append(f"{where}: each morph state needs an at, in time order")
+    return out
+
+
+def _caption_problems(where: str, p: dict) -> list:
+    out = []
+    if p.get("style", "box") not in CAPTION_STYLES:
+        out.append(f"{where}: params.style must be one of {', '.join(CAPTION_STYLES)}, got {p.get('style')!r}")
+    if p.get("position", "top") not in CAPTION_POSITIONS:
+        out.append(f"{where}: params.position must be one of {', '.join(CAPTION_POSITIONS)}, got {p.get('position')!r}")
+    if "breaks" in p and not (isinstance(p["breaks"], list) and all(_num(b) for b in p["breaks"])):
+        out.append(f"{where}: params.breaks must list seconds")
+    if "hide" in p and not (isinstance(p["hide"], list) and all(isinstance(h, bool) for h in p["hide"])):
+        out.append(f"{where}: params.hide must list true or false per break")
+    if "tones" in p and not (isinstance(p["tones"], list) and all(t in ("light", "dark") for t in p["tones"])):
+        out.append(f"{where}: params.tones must list light or dark per break")
+    if "keywords" in p and not (isinstance(p["keywords"], list) and all(isinstance(k, str) for k in p["keywords"])):
+        out.append(f"{where}: params.keywords must list one word (or \"\") per break")
+    if "emoji" in p and not (isinstance(p["emoji"], dict) and all(isinstance(v, str) for v in p["emoji"].values())):
+        out.append(f"{where}: params.emoji must map a keyword to its emoji")
     return out
 
 
@@ -573,9 +602,40 @@ def voice_words(cues: list, words: list) -> list:
         inside = [w for w in words if at - 1e-9 <= w["start"] < end]
         if c["part"] == "words":
             p["words"] = [_rel(w, at) for w in inside]
+        elif p.get("style") == "reel":
+            p["chunks"] = reel_chunks(inside, at, p)
         else:
             p["chunks"] = [[_rel(w, at) for w in ch]
                            for ch in chunks(inside, int(p.get("max_words", 4)), int(p.get("max_chars", 24)))]
+    return out
+
+
+def reel_chunks(words: list, at: float, p: dict) -> list:
+    """Reel captions: never across a break (the board's beat starts); inside a beat, chunks as captions are
+    (at most max_words 8 and max_chars 42); the first word matching that beat's keyword carries `key` and its
+    `emoji`."""
+    breaks = sorted(b for b in p.get("breaks") or [] if _num(b))
+    keywords = list(p.get("keywords") or [])
+    emoji = p.get("emoji") or {}
+    pieces = {}
+    for w in words:
+        k = sum(1 for b in breaks if b <= w["start"] - at + 1e-9) - 1  # breaks: seconds from the cue's at, as motion.js reads them
+        pieces.setdefault(k, []).append(w)
+    out = []
+    for k in sorted(pieces):
+        key = _norm(keywords[k]) if 0 <= k < len(keywords) else ""
+        marked = False
+        for ch in chunks(pieces[k], int(p.get("max_words", REEL_MAX_WORDS)), int(p.get("max_chars", REEL_MAX_CHARS))):
+            row = []
+            for w in ch:
+                r = _rel(w, at)
+                if key and not marked and _norm(w["text"]) == key:
+                    r["key"] = True
+                    if emoji.get(keywords[k]):
+                        r["emoji"] = emoji[keywords[k]]
+                    marked = True
+                row.append(r)
+            out.append(row)
     return out
 
 
@@ -1227,7 +1287,9 @@ def platform_plan(platform: str, macos_major=None, swift: bool = False) -> dict:
 
 
 def chrome_candidates(platform: str, env: dict) -> list:
-    """Where Chrome lives on this platform (paths first, then names to find on PATH)."""
+    """Where Chrome lives on this platform (ONCA_CHROME first when set, then paths, then names to find on PATH)."""
+    if env.get("ONCA_CHROME"):
+        return [env["ONCA_CHROME"]]
     fam = _family(platform)
     if fam == "darwin":
         return ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -1269,6 +1331,61 @@ def cutout_command(engine: str, src, out, swift, uv) -> list:
 
 def rembg_line() -> str:
     return " ".join(cutout_command("rembg", "IN.png", "OUT.png", "uv", "uv"))
+
+
+# ---------------------------------------------------------------- the free music bed
+
+NUMPY_PIN = "2.5.4"  # the newest numpy 2.x on PyPI at least two weeks old when it was set
+BED_SCRIPT = Path(__file__).resolve().parent / "bed.py"
+MOODS = {"calm": {"bpm": 90, "key": "A", "chords": ["Am", "F", "C", "G"], "body": "build"},
+         "drive": {"bpm": 110, "key": "A", "chords": ["Am", "F", "C", "G"], "body": "drop"},
+         "bright": {"bpm": 100, "key": "C", "chords": ["C", "G", "Am", "F"], "body": "drop"}}
+BPM_RANGE = (60, 160)
+
+
+def bed_plan(duration: float, bpm, mood: str, tones=None) -> dict:
+    """bed.py's plan for a bed at least `duration` long: an intro bar, the mood's body, an outro bar; a bar whose
+    middle falls inside a dark beat (`tones`: [(from, to, tone)]) breaks down (no drums). Equal neighbours merge."""
+    if mood not in MOODS:
+        raise ValueError(f"mood must be one of {', '.join(MOODS)}, got {mood!r}")
+    m = MOODS[mood]
+    bpm = m["bpm"] if bpm is None else bpm
+    if not (isinstance(bpm, int) and not isinstance(bpm, bool) and BPM_RANGE[0] <= bpm <= BPM_RANGE[1]):
+        raise ValueError(f"bpm must be a whole number from {BPM_RANGE[0]} to {BPM_RANGE[1]}, got {bpm!r}")
+    if not (_num(duration) and duration > 0):
+        raise ValueError(f"duration must be seconds over 0, got {duration!r}")
+    bar = 4 * 60 / bpm
+    n = math.ceil(duration / bar - 1e-9) + 1
+    dark = [(a, z) for a, z, tone in tones or [] if tone == "dark"]
+    kinds = []
+    for k in range(n):
+        mid = (k + 0.5) * bar
+        if k == 0:
+            kinds.append("intro")
+        elif k == n - 1:
+            kinds.append("outro")
+        else:
+            kinds.append("break" if any(a <= mid < z for a, z in dark) else m["body"])
+    sections = []
+    for kind in kinds:
+        if sections and sections[-1]["kind"] == kind:
+            sections[-1]["bars"] += 1
+        else:
+            sections.append({"bars": 1, "kind": kind})
+    return {"bpm": bpm, "key": m["key"], "chords": list(m["chords"]), "sections": sections, "stops": [], "end_ring": True}
+
+
+def bed_beats(plan: dict) -> dict:
+    """The bed's exact beats, in the shape kit.py beats writes."""
+    bpm = plan["bpm"]
+    count = 4 * sum(s["bars"] for s in plan["sections"])
+    beat_times = [round(k * 60 / bpm, 3) for k in range(count)]
+    return {"bpm": bpm, "bpmConfidence": 1.0, "beatTimes": beat_times, "bars": bars(beat_times)}
+
+
+def bed_command(uv: str, script: str, plan: str, out: str) -> list:
+    """bed.py through uv with its pinned numpy, the same on every platform."""
+    return [str(uv), "run", "--python", "3.12", "--with", "numpy==" + NUMPY_PIN, str(script), str(plan), "--out", str(out)]
 
 
 # ---------------------------------------------------------------- PNG (8-bit RGB / RGBA, not interlaced)

@@ -89,3 +89,33 @@
 .om-cutout { position: absolute; display: block; padding: 14px; background: #FFFFFF; border-radius: 10px;
   box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 14px 32px rgba(0,0,0,.22); }
 .om-cutout > img { display: block; width: 100%; height: auto; border-radius: 6px; }
+
+/* reel: the ground every scene sits on (grid paper, dots or plain), each scene light or dark */
+.om-ground { position: absolute; inset: 0; background-color: var(--om-paper); }
+.om-ground[data-texture="grid"] { background-image: linear-gradient(color-mix(in srgb, var(--om-ink) 6%, transparent) 2px, transparent 2px), linear-gradient(90deg, color-mix(in srgb, var(--om-ink) 6%, transparent) 2px, transparent 2px); background-size: 48px 48px; background-position: -1px -1px; }
+.om-ground[data-texture="dots"] { background-image: radial-gradient(color-mix(in srgb, var(--om-ink) 12%, transparent) 2.5px, transparent 3px); background-size: 40px 40px; }
+.om-ground[data-texture="plain"] { background-image: none; }
+.om-scene[data-tone="light"] { color: var(--om-ink); background: var(--om-paper); }
+.om-scene[data-tone="dark"] { --om-paper: var(--om-dark-paper, #121110); --om-ink: var(--om-dark-ink, #F3EFE6); --om-muted: var(--om-dark-muted, #8E887E); color: var(--om-ink); background: var(--om-paper); }
+.om-stage { position: absolute; inset: 0; transform-origin: 50% 45%; }
+.om-shadow { box-shadow: 0 2px 6px rgba(0,0,0,.08), 0 24px 60px rgba(0,0,0,.16); }
+.om-scene[data-tone="dark"] .om-shadow { box-shadow: 0 2px 6px rgba(0,0,0,.4), 0 24px 60px rgba(0,0,0,.55); }
+.om-glow { box-shadow: 0 0 0 1px color-mix(in srgb, var(--om-accent) 40%, transparent), 0 0 60px color-mix(in srgb, var(--om-accent) 45%, transparent); }
+.om-caret { display: inline-block; width: 0.55em; height: 1em; margin-left: 0.08em; vertical-align: -0.12em; background: var(--om-accent); }
+
+/* reel captions: the phrase at the top, coming words dimmed, the keyword boxed as it is said */
+.om-caption[data-style="reel"] { position: absolute; left: 90px; right: 90px; top: 220px; color: var(--om-ink); font-weight: 700; font-size: 62px; line-height: 1.18; letter-spacing: -0.01em; }
+.om-caption[data-style="reel"][data-tone="dark"] { color: var(--om-dark-ink, #F3EFE6); }
+.om-caption[data-style="reel"][data-position="middle"] { top: 880px; }
+.om-caption[data-style="reel"][data-position="bottom"] { top: auto; bottom: 300px; }
+.om-caption[data-style="reel"] .om-cw { transition: none; }
+.om-cw.om-dim { opacity: var(--om-dim, .35); }
+.om-cw.om-on { opacity: 1; }
+.om-caption[data-style="reel"] .om-on { color: inherit; }
+.om-key { position: relative; padding: 0 0.12em; }
+.om-key .om-keybox { position: absolute; inset: -0.06em -0.04em; border-width: 3px; }
+.om-key .om-handle { width: 12px; height: 12px; border-width: 3px; }
+.om-emoji { display: inline-block; font-size: 0.9em; }
+
+/* presenter: the founder cut out of their own talking clip, anchored at the bottom of its box */
+.om-presenter { position: absolute; left: 0; top: 0; width: 1080px; height: 840px; object-fit: cover; object-position: 50% 100%; transform-origin: 0 0; opacity: 0; }  /* shown by the board's placement cues */

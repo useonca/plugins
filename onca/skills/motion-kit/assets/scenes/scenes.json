@@ -1,0 +1,506 @@
+{
+ "version": 1,
+ "css": "scenes.css",
+ "scenes": [
+  {
+   "type": "headline",
+   "file": "headline.html",
+   "slots": [],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-title",
+     "part": "words",
+     "at": 0,
+     "params": {
+      "from_voice": true,
+      "mode": "ink"
+     }
+    },
+    {
+     "id": "@-mark",
+     "part": "highlight",
+     "at": "keyword+0.25",
+     "params": {
+      "style": "box"
+     }
+    }
+   ]
+  },
+  {
+   "type": "metaphor",
+   "file": "metaphor.html",
+   "slots": [
+    "art",
+    "props"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-art",
+     "part": "draw",
+     "at": 0.1,
+     "params": {
+      "stagger": 0.08
+     }
+    },
+    {
+     "id": "@-props",
+     "part": "pop",
+     "at": 0.5,
+     "params": {
+      "each": ".om-prop",
+      "stagger": 0.1
+     }
+    }
+   ]
+  },
+  {
+   "type": "browser",
+   "file": "browser.html",
+   "slots": [
+    "url",
+    "title",
+    "shot"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-card",
+     "part": "tilt",
+     "at": 0,
+     "dur": 0.8,
+     "params": {
+      "from_rx": 0,
+      "from_ry": 0,
+      "rx": 8,
+      "ry": -14
+     }
+    },
+    {
+     "id": "@-mark",
+     "part": "highlight",
+     "at": 0.6
+    }
+   ]
+  },
+  {
+   "type": "phone",
+   "file": "phone.html",
+   "slots": [
+    "shot"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-phone",
+     "part": "move",
+     "at": 0,
+     "dur": 0.6,
+     "params": {
+      "from": {
+       "y": 140,
+       "opacity": 0,
+       "scale": 0.96
+      },
+      "to": {
+       "y": 0,
+       "opacity": 1
+      },
+      "ease": "outQuint"
+     }
+    },
+    {
+     "id": "@-badge",
+     "part": "pop",
+     "at": 0.5,
+     "params": {
+      "rotate": -4
+     }
+    }
+   ]
+  },
+  {
+   "type": "terminal",
+   "file": "terminal.html",
+   "slots": [
+    "prompt",
+    "lines"
+   ],
+   "tone": "dark",
+   "cues": [
+    {
+     "id": "@-prompt",
+     "part": "type",
+     "at": 0.1,
+     "params": {
+      "text": "{{prompt}}"
+     }
+    },
+    {
+     "id": "@-out",
+     "part": "pop",
+     "at": 0.9,
+     "params": {
+      "each": ".om-line",
+      "stagger": 0.08,
+      "from_scale": 0.94,
+      "rotate_from": 0
+     }
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "file": "stat.html",
+   "slots": [
+    "value",
+    "label"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-num",
+     "part": "odometer",
+     "at": 0.1,
+     "params": {
+      "to": "{{value}}"
+     }
+    },
+    {
+     "id": "@-label",
+     "part": "words",
+     "at": 0.5,
+     "params": {
+      "mode": "rise"
+     }
+    }
+   ]
+  },
+  {
+   "type": "chart",
+   "file": "chart.html",
+   "slots": [
+    "values",
+    "label"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-chart",
+     "part": "chart",
+     "at": 0.1,
+     "params": {
+      "kind": "line",
+      "values": "{{values}}",
+      "draw": 1.0
+     }
+    },
+    {
+     "id": "@-label",
+     "part": "words",
+     "at": 1.0,
+     "params": {
+      "mode": "rise"
+     }
+    }
+   ]
+  },
+  {
+   "type": "versus",
+   "file": "versus.html",
+   "slots": [
+    "left",
+    "right"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-left",
+     "part": "pop",
+     "at": 0,
+     "params": {
+      "rotate": -3
+     }
+    },
+    {
+     "id": "@-right",
+     "part": "pop",
+     "at": 0.35,
+     "params": {
+      "rotate": 2
+     }
+    },
+    {
+     "id": "@-arrow",
+     "part": "draw",
+     "at": 0.7,
+     "params": {
+      "draw": 0.35
+     }
+    }
+   ]
+  },
+  {
+   "type": "checklist",
+   "file": "checklist.html",
+   "slots": [
+    "items"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-list",
+     "part": "pop",
+     "at": 0.1,
+     "params": {
+      "each": ".om-item",
+      "stagger": 0.12,
+      "rotate_from": 0,
+      "from_scale": 0.9
+     }
+    },
+    {
+     "id": "@-ticks",
+     "part": "draw",
+     "at": 0.5,
+     "params": {
+      "stagger": 0.12,
+      "draw": 0.3
+     }
+    }
+   ]
+  },
+  {
+   "type": "chat",
+   "file": "chat.html",
+   "slots": [
+    "in",
+    "out"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-m1",
+     "part": "bubble",
+     "at": 0.1,
+     "params": {
+      "side": "in",
+      "text": "{{in}}",
+      "typing": 0.6
+     }
+    },
+    {
+     "id": "@-m2",
+     "part": "bubble",
+     "at": 0.9,
+     "params": {
+      "side": "out",
+      "text": "{{out}}",
+      "typing": 0.5
+     }
+    }
+   ]
+  },
+  {
+   "type": "calendar",
+   "file": "calendar.html",
+   "slots": [
+    "day",
+    "month"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-page",
+     "part": "drop",
+     "at": 0.1,
+     "params": {
+      "rotate": -3
+     }
+    },
+    {
+     "id": "@-ring",
+     "part": "highlight",
+     "at": 0.5,
+     "params": {
+      "style": "ellipse",
+      "draw": 0.45
+     }
+    }
+   ]
+  },
+  {
+   "type": "logos",
+   "file": "logos.html",
+   "slots": [
+    "logos",
+    "label"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-row",
+     "part": "pop",
+     "at": 0.1,
+     "params": {
+      "each": ".om-logo",
+      "stagger": 0.08
+     }
+    },
+    {
+     "id": "@-label",
+     "part": "words",
+     "at": 0.5,
+     "params": {
+      "mode": "rise"
+     }
+    }
+   ]
+  },
+  {
+   "type": "card-stack",
+   "file": "card-stack.html",
+   "slots": [
+    "cards"
+   ],
+   "tone": "light",
+   "cues": [
+    {
+     "id": "@-grid",
+     "part": "card-grid",
+     "at": 0,
+     "params": {
+      "rows": 4,
+      "cols": 3,
+      "wave_from": [
+       1,
+       1
+      ]
+     }
+    },
+    {
+     "id": "@-mark",
+     "part": "highlight",
+     "at": 0.8
+    }
+   ]
+  },
+  {
+   "type": "flow",
+   "file": "flow.html",
+   "slots": [
+    "nodes"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-nodes",
+     "part": "pop",
+     "at": 0.1,
+     "params": {
+      "each": ".om-node",
+      "stagger": 0.15
+     }
+    },
+    {
+     "id": "@-links",
+     "part": "draw",
+     "at": 0.45,
+     "params": {
+      "stagger": 0.15,
+      "draw": 0.25
+     }
+    }
+   ]
+  },
+  {
+   "type": "quote",
+   "file": "quote.html",
+   "slots": [
+    "quote",
+    "who"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-card",
+     "part": "move",
+     "at": 0,
+     "params": {
+      "from": {
+       "y": 60,
+       "opacity": 0
+      },
+      "to": {
+       "y": 0,
+       "opacity": 1
+      },
+      "ease": "outQuint"
+     }
+    },
+    {
+     "id": "@-text",
+     "part": "words",
+     "at": 0.2,
+     "params": {
+      "mode": "ink",
+      "gap": 0.06
+     }
+    }
+   ]
+  },
+  {
+   "type": "end",
+   "file": "end.html",
+   "slots": [
+    "logo",
+    "line",
+    "url"
+   ],
+   "tone": "dark",
+   "cues": [
+    {
+     "id": "@-logo",
+     "part": "pop",
+     "at": 0.1,
+     "params": {
+      "from_scale": 0.9,
+      "rotate_from": 0
+     }
+    },
+    {
+     "id": "@-line",
+     "part": "words",
+     "at": 0.4,
+     "params": {
+      "mode": "rise"
+     }
+    },
+    {
+     "id": "@-url",
+     "part": "move",
+     "at": 0.9,
+     "params": {
+      "from": {
+       "y": 30,
+       "opacity": 0
+      },
+      "to": {
+       "y": 0,
+       "opacity": 1
+      },
+      "ease": "outQuint"
+     }
+    }
+   ]
+  },
+  {
+   "type": "custom",
+   "file": null,
+   "slots": [],
+   "tone": "any",
+   "cues": []
+  }
+ ]
+}

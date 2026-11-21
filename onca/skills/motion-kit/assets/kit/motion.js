@@ -24,6 +24,12 @@
       const q = clamp01(p);
       return q < 0.5 ? 2 * q * q : 1 - Math.pow(-2 * q + 2, 2) / 2;
     },
+    inQuart: (p) => Math.pow(clamp01(p), 4),
+    inOutCubic: (p) => {
+      const q = clamp01(p);
+      return q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+    },
+    outQuint: (p) => 1 - Math.pow(1 - clamp01(p), 5),
   };
 
   /* A closed-form damped spring from 0 to 1: damping z (1 never overshoots), freq in Hz. */
@@ -196,8 +202,21 @@
   function chunkList(params) {
     return Array.isArray(params.chunks) ? params.chunks : [];
   }
+  const KEY_DRAW = 0.35;
+  /* The index of the board beat playing at t (-1 before the first break). */
+  function beatAt(params, t) {
+    let k = -1;
+    (Array.isArray(params.breaks) ? params.breaks : []).forEach((b, i) => {
+      if (t >= b - 1e-9) k = i;
+    });
+    return k;
+  }
+  /* The tone (light or dark) of the beat playing at t, so the captions stay readable on every scene. */
+  const toneAt = (params, t) => (Array.isArray(params.tones) && params.tones[Math.max(0, beatAt(params, t))]) || "light";
+  /* Whether the captions step aside at t (a headline beat says the line in big type itself). */
+  const hiddenAt = (params, t) => beatAt(params, t) >= 0 && Array.isArray(params.hide) && !!params.hide[beatAt(params, t)];
   parts.captions = {
-    defaults: { max_words: 4, style: "box", from_voice: true },
+    defaults: { max_words: 4, style: "box", from_voice: true, position: "top", dim: 0.35 },
     dur: (p) => {
       const c = chunkList(p);
       return c.length ? c[c.length - 1][c[c.length - 1].length - 1].end + 0.25 : 1;
@@ -208,27 +227,55 @@
       for (let i = 0; i < chunks.length; i++) {
         const start = chunks[i][0].start;
         const next = i + 1 < chunks.length ? chunks[i + 1][0].start : Infinity;
-        const end = Math.min(next, chunks[i][chunks[i].length - 1].end + 0.25);
+        const hold = params.style === "reel" ? Infinity : 0.25;  // a reel caption stays up until the next phrase
+        const end = Math.min(next, chunks[i][chunks[i].length - 1].end + hold);
         if (t >= start && t < end) chunk = i;
       }
-      if (chunk < 0) return { chunk: -1, text: "", active: -1 };
+      if (chunk < 0 || hiddenAt(params, t)) return { chunk: -1, text: "", active: -1, key: -1, key_draw: 0, handles: [0, 0, 0, 0], tone: toneAt(params, t) };
       const words = chunks[chunk];
       let active = -1;
+      let key = -1;
       words.forEach((w, i) => {
         if (t >= w.start) active = i;
+        if (w.key && key < 0) key = i;
       });
-      return { chunk, text: words.map((w) => w.text).join(" "), active };
+      const since = key >= 0 ? t - words[key].start : -1;
+      const keyDraw = key >= 0 ? r3(ease.outCubic(progress(since, 0, KEY_DRAW))) : 0;
+      const handles = [0, 1, 2, 3].map((i) => (key >= 0 ? r3(Math.max(0, spring(since - KEY_DRAW - i * 0.04, 0.55, 4))) : 0));
+      return { chunk, text: words.map((w) => w.text).join(" "), active, key, key_draw: keyDraw, handles, tone: toneAt(params, t) };
     },
     apply(el, st, params) {
+      const reel = params.style === "reel";
       el.classList.add("om-caption");
       el.setAttribute("data-style", params.style);
+      if (reel) {
+        el.setAttribute("data-position", params.position);
+        el.setAttribute("data-tone", st.tone);
+      }
       el.setAttribute("data-motion-blur", "off");  // a whip behind the captions must not smear them
       const words = st.chunk >= 0 ? chunkList(params)[st.chunk] : [];
       once(el, "captions:" + st.chunk, () => {
-        el.innerHTML = words.map((w) => `<span class="om-cw">${esc(w.text)}</span>`).join(" ");
+        el.innerHTML = words.map((w, i) => {
+          if (!reel || i !== st.key) return `<span class="om-cw">${esc(w.text)}</span>`;
+          const box = '<i class="om-keybox om-highlight" data-style="box">' + '<i class="om-handle"></i>'.repeat(4) + "</i>";
+          const emoji = w.emoji ? ` <span class="om-emoji">${esc(w.emoji)}</span>` : "";
+          return `<span class="om-cw om-key">${box}${esc(w.text)}</span>${emoji}`;
+        }).join(" ");
       });
       el.style.opacity = st.chunk >= 0 ? "1" : "0";
-      el.querySelectorAll(".om-cw").forEach((s, i) => s.classList.toggle("om-on", i === st.active));
+      if (reel) el.style.setProperty("--om-dim", String(params.dim));
+      el.querySelectorAll(".om-cw").forEach((s, i) => {
+        if (reel) {
+          s.classList.toggle("om-dim", i > st.active);
+          s.classList.toggle("om-on", i <= st.active);
+        } else s.classList.toggle("om-on", i === st.active);
+      });
+      const box = el.querySelectorAll(".om-keybox")[0];
+      if (box) {
+        box.style.clipPath = `inset(-20px ${r3((1 - st.key_draw) * 100)}% -20px -20px)`;
+        box.style.opacity = st.key_draw > 0 ? "1" : "0";
+        box.querySelectorAll(".om-handle").forEach((h, i) => (h.style.transform = `scale(${st.handles[i]})`));
+      }
     },
   };
 
@@ -328,7 +375,7 @@
 
   /* A pop-in at a tilt, on a spring; with `each`, every matching child in turn. */
   parts.pop = {
-    defaults: { from_scale: 0.6, rotate: 0, rotate_from: -8, damping: 0.6, freq: 3.2, each: "", stagger: 0.06 },
+    defaults: { from_scale: 0.6, rotate: 0, rotate_from: -8, damping: 0.6, freq: 3.2, each: "", stagger: 0.06, origin: "center" },
     dur: (p) => (p.each ? (Math.max(1, p.count || 1) - 1) * p.stagger : 0) + 0.8,
     state(params, t) {
       const n = params.each ? Math.max(0, params.count || 0) : 1;
@@ -346,7 +393,11 @@
     },
     apply(el, st, params) {
       const targets = params.each ? el.querySelectorAll(params.each) : [el];
-      st.items.forEach((b, i) => targets[i] && applyBase(targets[i], b));
+      st.items.forEach((b, i) => {
+        if (!targets[i]) return;
+        targets[i].style.transformOrigin = params.origin;
+        applyBase(targets[i], b);
+      });
     },
     prepare(el, params) {
       return params.each ? Object.assign({}, params, { count: el.querySelectorAll(params.each).length }) : params;
@@ -378,10 +429,17 @@
       const b = base(params.to);
       const out = {};
       for (const k of Object.keys(BASE)) out[k] = r3(lerp(a[k], b[k], e));
+      for (const k of ["w", "h"]) {  // a box change (width and height in px), as the presenter moves place
+        const from = params.from || {};
+        const to = params.to || {};
+        if (k in from || k in to) out[k] = r3(lerp(k in from ? from[k] : to[k], k in to ? to[k] : from[k], e));
+      }
       return out;
     },
     apply(el, st) {
       applyBase(el, st);
+      if (st.w != null) el.style.width = st.w + "px";
+      if (st.h != null) el.style.height = st.h + "px";
     },
   };
 
@@ -553,10 +611,118 @@
     },
   };
 
+  /* An SVG drawn on stroke by stroke (every path, line, polyline, circle, rect and ellipse inside, in page
+   * order, measured as pathLength 1), then its fills fade in. */
+  const DRAWN = "path, line, polyline, polygon, circle, rect, ellipse";
+  const FILL_IN = 0.3;
+  parts.draw = {
+    defaults: { stagger: 0.08, draw: 0.6, fill_after: true, ease: "outCubic", count: 1 },
+    dur: (p) => Math.max(0, (p.count || 1) - 1) * p.stagger + p.draw + (p.fill_after ? FILL_IN : 0),
+    state(params, t) {
+      const n = Math.max(1, params.count || 1);
+      const e = ease[params.ease] || ease.outCubic;
+      const offsets = [];
+      for (let i = 0; i < n; i++) offsets.push(r3(1 - e(progress(t, i * params.stagger, params.draw))));
+      const fill = params.fill_after ? r3(ease.outCubic(progress(t, (n - 1) * params.stagger + params.draw, FILL_IN))) : 1;
+      return { offsets, fill };
+    },
+    prepare(el, params) {
+      return Object.assign({}, params, { count: Math.max(1, el.querySelectorAll(DRAWN).length) });
+    },
+    apply(el, st) {
+      el.querySelectorAll(DRAWN).forEach((p, i) => {
+        p.setAttribute("pathLength", "1");
+        p.style.strokeDasharray = "1 1";
+        p.style.strokeDashoffset = String(st.offsets[Math.min(i, st.offsets.length - 1)]);
+        p.style.fillOpacity = String(st.fill);
+      });
+    },
+  };
+
+  /* A card tilting into 3D perspective as it arrives (context cards only: the hero product UI stays flat). */
+  parts.tilt = {
+    defaults: { rx: 12, ry: -18, from_rx: 0, from_ry: 0, z: 0, perspective: 1400, ease: "outCubic", from_scale: 0.96, fade: true },
+    dur: () => 0.8,
+    state(params, t, dur) {
+      const e = (ease[params.ease] || ease.outCubic)(progress(t, 0, dur));
+      return { rx: r3(lerp(params.from_rx, params.rx, e)), ry: r3(lerp(params.from_ry, params.ry, e)), z: params.z,
+               perspective: params.perspective, scale: r3(lerp(params.from_scale, 1, e)),
+               opacity: params.fade ? r3(clamp01(t / 0.15)) : 1 };
+    },
+    apply(el, st) {
+      el.style.opacity = String(st.opacity);
+      el.style.transform = `perspective(${st.perspective}px) rotateX(${st.rx}deg) rotateY(${st.ry}deg) translateZ(${st.z}px) scale(${st.scale})`;
+    },
+  };
+
+  /* Text typed in at cps characters a second, with a caret that blinks once the line is done. */
+  function typedText(params) {
+    return String(params.text || "");
+  }
+  parts.type = {
+    defaults: { text: "", cps: 28, caret: true },
+    dur: (p) => typedText(p).length / Math.max(1, p.cps),
+    state(params, t, dur) {
+      const text = typedText(params);
+      const chars = Math.max(0, Math.min(text.length, Math.floor(t * params.cps + 1e-9)));
+      const caret = params.caret && t >= 0 && (t < dur || Math.floor((t - dur) / 0.5) % 2 === 0);
+      return { chars, caret: !!caret };
+    },
+    prepare(el, params) {
+      if (params.text) return params;
+      if (!el.hasAttribute("data-om-text")) el.setAttribute("data-om-text", el.textContent.trim());
+      return Object.assign({}, params, { text: el.getAttribute("data-om-text") });
+    },
+    apply(el, st, params) {
+      const shown = typedText(params).slice(0, st.chars);
+      once(el, "type:" + shown + ":" + st.caret, () => {
+        el.innerHTML = esc(shown) + (st.caret ? '<i class="om-caret"></i>' : "");
+      });
+    },
+  };
+
+  /* The slow camera push that keeps a beat moving: scale and drift from one place to another over the beat. */
+  const DRIFT_FROM = { scale: 1, x: 0, y: 0 };
+  const DRIFT_TO = { scale: 1.05, x: 0, y: 0 };
+  parts.drift = {
+    defaults: { from: DRIFT_FROM, to: DRIFT_TO, ease: "inOutQuad" },
+    dur: () => 2.5,
+    state(params, t, dur) {
+      const e = (ease[params.ease] || ease.inOutQuad)(progress(t, 0, dur));
+      const a = Object.assign({}, DRIFT_FROM, params.from);
+      const b = Object.assign({}, DRIFT_TO, params.to);
+      return { scale: r3(lerp(a.scale, b.scale, e)), x: r3(lerp(a.x, b.x, e)), y: r3(lerp(a.y, b.y, e)) };
+    },
+    apply(el, st) {
+      el.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
+    },
+  };
+
   /* A scene change on the incoming scene (a full-frame element above the outgoing one): a hard cut, a paper
    * slide, a fast whip (the engine's motion blur smears it) or a tear that reveals it behind a torn edge; with
    * `out`, the outgoing scene is hidden once the change is over. */
-  const SCENE_DUR = { cut: 0.04, slide: 0.6, whip: 0.35, tear: 0.55 };
+  const SCENE_DUR = { cut: 0.04, slide: 0.6, whip: 0.35, tear: 0.55, focus: 0.35, zoom: 0.35, fade: 0.3 };
+  const FOCUS_OUT = 0.18;  // the outgoing scene blurs away over this
+  const FOCUS_IN = 0.2;  // the incoming one sharpens over the change's last this
+  const NEUTRAL_OUT = { opacity: 1, blur: 0, scale: 1 };
+  /* The camera-like changes: focus pull, zoom-through, fade (in: the incoming scene; out: the outgoing one). */
+  function cameraChange(kind, t, dur) {
+    const shown = t >= 0;
+    if (kind === "focus") {
+      const q = ease.outCubic(progress(t, 0, FOCUS_OUT));
+      const start = dur - FOCUS_IN;
+      const p = ease.outCubic(progress(t, start, FOCUS_IN));
+      return { in: { opacity: t >= start - 1e-9 ? r3(Math.max(p, 0.001)) : 0, blur: r3(10 * (1 - p)), scale: r3(lerp(0.97, 1, p)) },
+               out: shown ? { opacity: r3(1 - q), blur: r3(10 * q), scale: r3(lerp(1, 1.03, q)) } : null };
+    }
+    if (kind === "zoom") {
+      const q = ease.inQuart(progress(t, 0, dur));
+      const p = ease.outExpo(progress(t, 0, dur));
+      return { in: { opacity: shown ? r3(ease.outCubic(progress(t, 0, dur * 0.6))) : 0, blur: 0, scale: r3(lerp(0.9, 1, p)) },
+               out: shown ? { opacity: r3(1 - q), blur: 0, scale: r3(lerp(1, 2.5, q)) } : null };
+    }
+    return { in: { opacity: shown ? r3(progress(t, 0, dur)) : 0, blur: 0, scale: 1 }, out: null };  // fade
+  }
   const SCENE_DIR = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
   parts.scene = {
     defaults: { kind: "slide", from: "right", out: null, seed: 3 },
@@ -564,6 +730,11 @@
     state(params, t, dur) {
       const shown = t >= 0 ? 1 : 0;
       if (params.kind === "cut") return { opacity: shown, x: 0, y: 0, reveal: 1, out_hidden: shown };
+      if (params.kind in { focus: 1, zoom: 1, fade: 1 }) {
+        const c = cameraChange(params.kind, t, dur);
+        return { opacity: c.in.opacity, x: 0, y: 0, reveal: 1, blur: c.in.blur, scale: c.in.scale,
+                 out: t < dur ? c.out : null, out_hidden: t >= dur ? 1 : 0 };
+      }
       const e = (params.kind === "whip" ? ease.outExpo : params.kind === "tear" ? ease.inOutQuad : ease.outCubic)(progress(t, 0, dur));
       const [dx, dy] = SCENE_DIR[params.from] || SCENE_DIR.right;
       const slide = params.kind === "tear" ? 0 : 1 - e;
@@ -574,14 +745,23 @@
       el.classList.add("om-scene");
       el.setAttribute("data-layout-allow-occlusion", "");  // it covers the scene before it on purpose
       el.style.opacity = String(st.opacity);
-      el.style.transform = `translate(${r3(st.x * 100)}%, ${r3(st.y * 100)}%)`;
+      el.style.transform = `translate(${r3(st.x * 100)}%, ${r3(st.y * 100)}%)` + (st.scale != null && st.scale !== 1 ? ` scale(${st.scale})` : "");
       el.style.clipPath = st.reveal >= 1 ? "none" : tornReveal(params, st.reveal);
+      el.style.filter = st.blur > 0.01 ? `blur(${st.blur}px)` : "none";
       if (params.out) {
         const out = el.ownerDocument.getElementById(params.out);
-        if (out) out.style.visibility = st.out_hidden ? "hidden" : "visible";
+        // display, not visibility: a child that sets its own visibility (the odometer's digits) would show through
+        if (out) out.style.display = st.out_hidden ? "none" : "";  // its blur and fade: seek() applies them last
       }
     },
   };
+  /* The outgoing scene's side of a camera change (the separate `scale`, a blur and fade in its filter). seek()
+   * applies it after every cue, so it wins over the outgoing scene's own cue whatever their order in cues.json. */
+  function applyOut(out, o) {
+    out.style.scale = o.scale === 1 ? "" : String(o.scale);
+    const f = [o.blur > 0.01 ? `blur(${o.blur}px)` : "", o.opacity < 1 ? `opacity(${o.opacity})` : ""].filter(Boolean).join(" ");
+    out.style.filter = f || "none";
+  }
   /* The part of the frame a tear has revealed, from the `from` side, with a jagged edge (in % of the scene). */
   function tornReveal(params, reveal) {
     const [dx, dy] = SCENE_DIR[params.from] || SCENE_DIR.right;
@@ -636,6 +816,7 @@
       case "bubble": return [[p.typing, p.side === "out" ? "sent" : "received"]];
       case "morph": return (p.states || []).slice(1).map((s) => [s.at, "whoosh-short"]);
       case "scene": return p.kind === "cut" ? [] : [[0, p.kind === "whip" ? "whoosh" : "whoosh-short"]];
+      case "type": return [[0, "typing"]];
       default: return [];
     }
   }
@@ -667,6 +848,11 @@
       list.push(cue);
       byId.set(cue.id, list);
     });
+    (D.cues || []).forEach((cue) => {  // every outgoing scene starts neutral; a started change then marks it
+      const outId = cue.part === "scene" && cue.params ? cue.params.out : null;
+      const out = outId ? page.getElementById(outId) : null;
+      if (out) applyOut(out, NEUTRAL_OUT);
+    });
     for (const [id, list] of byId) {
       const el = page.getElementById(id);
       if (!el) throw new Error(`motion-kit: no element #${id}`);
@@ -679,6 +865,13 @@
         part.apply(el, part.state(params, t - cue.at, durOf(cue, params)), params);
       }
     }
+    (D.cues || []).forEach((cue) => {  // the outgoing side of every started camera change, after every cue
+      if (cue.part !== "scene" || !cue.params || !cue.params.out || cue.at > t + 1e-9) return;
+      const out = page.getElementById(cue.params.out);
+      const p = paramsOf(cue);
+      const st = parts.scene.state(p, t - cue.at, durOf(cue, p));
+      if (out && st.out) applyOut(out, st.out);
+    });
   }
 
   function tear(page) {
@@ -706,5 +899,5 @@
     else start();
   }
 
-  return { ease, spring, progress, rand, tornPath, parts, seek, events, paramsOf, durOf, formatNumber, markCover };
+  return { ease, spring, progress, rand, tornPath, parts, seek, events, paramsOf, durOf, formatNumber, markCover, applyOut };
 });

@@ -1,0 +1,111 @@
+/* Onca motion kit scene library: the look of each scene type (motion-kit/assets/scenes). Colours and fonts come
+ * from brand.css (--om-*); a dark scene swaps paper and ink (motion.css). motion.js sets every moving value, so a
+ * transform written here on an animated element is overwritten: these rules place and dress. Frame 1080 x 1920;
+ * the reel captions own y 220-420, so each scene's hero sits in y 440-1440 (higher and smaller when the founder's
+ * cut-out fills the bottom). */
+.om-hero { position: absolute; left: 90px; right: 90px; top: 440px; height: 1000px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 44px; font-family: var(--om-body); color: var(--om-ink); }
+.om-scene[data-presenter="bottom"] .om-hero { transform: translateY(-40px) scale(0.64); transform-origin: 50% 0; }
+.om-scene[data-presenter="corner"] .om-hero { transform: translateX(-90px) scale(0.84); transform-origin: 50% 0; }
+.om-scene[data-presenter="full"] .om-hero { opacity: 0; }
+
+/* headline */
+.om-s-wrap { position: relative; display: inline-block; max-width: 900px; }
+.om-s-title { margin: 0; font-family: var(--om-display); font-size: 112px; line-height: 1.02; letter-spacing: -0.03em; text-align: center; color: var(--om-ink); }
+.om-s-markbox { position: absolute; inset: -22px -28px; }
+
+/* metaphor: a drawn picture and the pieces that act it out */
+.om-s-art { width: 860px; height: 700px; display: flex; align-items: center; justify-content: center; }
+.om-s-art svg { width: 100%; height: 100%; overflow: visible; }
+.om-s-art :is(path, line, polyline, polygon, circle, rect, ellipse) { stroke: var(--om-ink); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.om-s-art .om-fill { fill: var(--om-accent); }
+.om-s-art .om-soft { fill: color-mix(in srgb, var(--om-accent) 22%, transparent); }
+.om-s-props { position: absolute; inset: 0; pointer-events: none; }
+.om-s-props .om-prop { font-family: var(--om-body); font-weight: 700; font-size: 34px; padding: 10px 20px; border-radius: 999px;
+  background: var(--om-paper); color: var(--om-ink); border: 3px solid var(--om-ink); white-space: nowrap; }
+.om-s-props .om-prop.om-accent { background: var(--om-accent); color: var(--om-accent-ink); border-color: var(--om-accent); }
+
+/* browser: a site as a floating card (context: it may tilt) */
+.om-s-browser { position: relative; width: 860px; border-radius: 26px; overflow: visible; background: #FFFFFF; color: #151412; }
+.om-s-chrome { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 24px; background: #F1EFEA; border-radius: 26px 26px 0 0; }
+.om-s-chrome i { width: 16px; height: 16px; border-radius: 50%; background: #D5D1C8; }
+.om-s-addr { margin-left: 18px; flex: 1; height: 38px; border-radius: 19px; background: #FFFFFF; font-size: 24px; line-height: 38px; padding: 0 20px; color: #6B665E; }
+.om-s-shot { display: block; width: 100%; height: 440px; object-fit: cover; object-position: top; }
+.om-s-btitle { position: relative; display: inline-block; margin: 26px 34px 34px; font-family: var(--om-display); font-size: 54px; line-height: 1.05; }
+.om-s-bmark { position: absolute; inset: -12px -18px; }
+
+/* phone: the product on a phone (the hero UI stays flat) */
+.om-s-phone { width: 430px; height: 880px; border-radius: 64px; padding: 16px; background: #111111; box-sizing: border-box; }
+.om-s-phone img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 50px; }
+.om-s-badge { position: absolute; right: 40px; top: 120px; padding: 16px 30px; border-radius: 999px; font-weight: 800; font-size: 40px;
+  background: var(--om-accent); color: var(--om-accent-ink); box-shadow: 0 14px 30px rgba(0,0,0,.2); }
+
+/* terminal: a prompt typed, the answer popping in */
+.om-s-term { width: 900px; border-radius: 26px; background: #0E0E0D; color: #EDE9E0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 38px; line-height: 1.4; overflow: hidden; }
+.om-s-tbar { height: 56px; display: flex; gap: 12px; align-items: center; padding: 0 24px; background: #1C1B19; }
+.om-s-tbar i { width: 16px; height: 16px; border-radius: 50%; background: #3A3833; }
+.om-s-prompt { padding: 34px 40px 10px; min-height: 54px; color: #FFFFFF; }
+.om-s-prompt::before { content: "> "; color: var(--om-accent); }
+.om-s-out { padding: 10px 40px 40px; color: #B9B3A8; }
+.om-s-out .om-line { padding: 4px 0; }
+.om-s-out .om-line b { color: var(--om-accent); font-weight: 600; }
+
+/* stat and chart */
+.om-s-num { font-family: var(--om-display); font-size: 240px; line-height: 1; letter-spacing: -0.04em; color: var(--om-ink); }
+.om-s-label { font-family: var(--om-body); font-weight: 700; font-size: 52px; line-height: 1.15; text-align: center; color: var(--om-ink); max-width: 880px; }
+.om-s-chart { width: 840px; height: 560px; }
+
+/* versus: the old way against the new */
+.om-s-side { width: 760px; padding: 44px 50px; border-radius: 30px; background: var(--om-paper); border: 4px solid color-mix(in srgb, var(--om-ink) 18%, transparent);
+  font-size: 50px; font-weight: 700; line-height: 1.15; text-align: center; color: color-mix(in srgb, var(--om-ink) 55%, var(--om-paper)); box-sizing: border-box; }
+.om-s-side.om-s-win { background: var(--om-accent); border-color: var(--om-accent); color: var(--om-accent-ink); }
+.om-s-arrow { width: 80px; height: 160px; overflow: visible; }
+.om-s-arrow path { fill: none; stroke: var(--om-ink); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* checklist */
+.om-s-list { display: flex; flex-direction: column; gap: 26px; width: 820px; }
+.om-s-list .om-item { display: flex; align-items: center; gap: 28px; padding: 28px 36px; border-radius: 24px; background: #FFFFFF; color: #151412;
+  font-size: 46px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10); }
+.om-tick { flex: none; width: 56px; height: 56px; border-radius: 50%; background: color-mix(in srgb, var(--om-accent) 20%, transparent); overflow: visible; }
+.om-tick path { fill: none; stroke: var(--om-accent); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* chat */
+.om-s-chat { width: 880px; display: flex; flex-direction: column; gap: 30px; }
+.om-s-row { display: flex; }
+.om-s-row.om-s-mine { justify-content: flex-end; }
+.om-s-chat .om-bubble { font-size: 48px; }
+
+/* calendar */
+.om-s-cal { width: 520px; border-radius: 34px; background: #FFFFFF; color: #151412; overflow: visible; text-align: center; }
+.om-s-month { padding: 22px; border-radius: 34px 34px 0 0; background: var(--om-accent); color: var(--om-accent-ink); font-weight: 800; font-size: 46px; letter-spacing: 0.08em; text-transform: uppercase; }
+.om-s-day { position: relative; display: inline-block; margin: 30px 0 44px; font-family: var(--om-display); font-size: 260px; line-height: 1; }
+.om-s-ring { position: absolute; inset: -10px -50px; }
+
+/* logos */
+.om-s-logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 44px; width: 880px; }
+.om-s-logos .om-logo { width: 170px; height: 170px; object-fit: contain; padding: 26px; box-sizing: border-box; border-radius: 40px; background: #FFFFFF; box-shadow: 0 12px 30px rgba(0,0,0,.12); }
+
+/* card stack: a tilted plane of cards with a wave */
+.om-s-plane { width: 900px; height: 760px; display: flex; align-items: center; justify-content: center; perspective: 1600px; }
+.om-s-grid { width: 640px; }
+.om-s-gmark { position: absolute; left: 380px; top: 400px; width: 200px; height: 250px; }
+
+/* flow: steps linked top to bottom */
+.om-s-flow { position: relative; width: 720px; height: 600px; }
+.om-s-nodes { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+.om-s-nodes .om-node { width: 640px; height: 150px; display: flex; align-items: center; justify-content: center; border-radius: 28px; background: #FFFFFF; color: #151412;
+  font-size: 46px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.12); }
+.om-s-nodes .om-node.om-accent { background: var(--om-accent); color: var(--om-accent-ink); }
+.om-s-links { position: absolute; left: 340px; top: 0; width: 40px; height: 600px; overflow: visible; }
+.om-s-links path { fill: none; stroke: var(--om-ink); stroke-width: 6; stroke-linecap: round; }
+
+/* quote */
+.om-s-quote { width: 860px; padding: 64px 60px; border-radius: 34px; background: #FFFFFF; color: #151412; box-sizing: border-box; }
+.om-s-qtext { font-family: var(--om-display); font-size: 66px; line-height: 1.12; }
+.om-s-who { margin-top: 34px; font-size: 34px; font-weight: 700; color: #6B665E; }
+
+/* end card */
+.om-s-end { gap: 54px; }
+.om-s-logo { width: 300px; height: 300px; object-fit: contain; }
+.om-s-endline { font-family: var(--om-display); font-size: 92px; line-height: 1.05; text-align: center; color: var(--om-ink); max-width: 900px; }
+.om-s-endurl { padding: 18px 40px; border-radius: 999px; background: var(--om-accent); color: var(--om-accent-ink); font-weight: 800; font-size: 46px; }

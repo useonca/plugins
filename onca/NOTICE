@@ -40,6 +40,13 @@ listed in skills/motion-kit/assets/LICENSES.json):
 - Paper textures Paper001, Paper002, Paper003 and Paper006 from ambientCG (https://ambientcg.com, CC0 1.0),
   converted to greyscale and resized by Onca.
 - The props (skills/motion-kit/assets/props/) are drawn by Onca and released under CC0 1.0.
+- The scene library (skills/motion-kit/assets/scenes/) is written by Onca and released under CC0 1.0.
 
 The motion-kit cut-out tool runs Apple's Vision framework on the founder's Mac, or rembg (MIT) with the
 isnet-general-use model (Apache 2.0), which the founder's own uv downloads; neither is bundled here.
+
+The motion-kit presenter tool cuts the founder out of their own talking clip with the render engine's
+remove-background command (HyperFrames, Apache 2.0), whose u2net_human_seg model (U-2-Net, Apache 2.0, published
+in rembg's releases, MIT) the engine downloads on first use, or with Apple's Vision framework on a Mac; neither is
+bundled here. The motion-kit music bed is made from code on the founder's computer by skills/motion-kit/scripts/bed.py
+(no samples), with numpy (BSD 3-Clause), which the founder's own uv downloads; it is not bundled here.

@@ -18,6 +18,13 @@ usage: kit.py new PROJECT [--size 1080x1920] [--fps 30] [--duration 12]
        kit.py cutout IN OUT.png [--engine vision|rembg] [--trim]
        kit.py recipe check RECIPE.json
        kit.py recipe cues RECIPE.json --out FILE
+       kit.py board new PROJECT [--words words.json] [--texture grid|dots|plain]
+       kit.py board check PROJECT
+       kit.py board build PROJECT [--force]
+       kit.py board sheet PROJECT --video RENDER.mp4
+       kit.py pace RENDER.mp4 [--board PROJECT/board.json] [--max-still 2.5]
+       kit.py presenter PROJECT --clip CLIP [--engine engine|vision] [--quality accurate|balanced] [--providers FILE]
+       kit.py bed PROJECT [--bpm N] [--mood calm|drive|bright]
 
 Run it with python3 (macOS, Linux) or py -3 -X utf8 (Windows). Exit codes: 0 ok, 2 bad input (every problem, one per
 line), 1 a tool failed (named, with its last lines). Nothing here installs anything or calls the internet; `pick`
@@ -28,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import html as htmlmod
 import json
 import platform as host
 import re
@@ -46,9 +54,11 @@ EDIT = SKILLS / "video-edit" / "scripts"
 for folder in (HERE, RENDER, EDIT):
     if str(folder) not in sys.path:
         sys.path.insert(0, str(folder))
+import board_core  # noqa: E402
 import kit_core  # noqa: E402
 import music_core  # noqa: E402
 import picker  # noqa: E402
+import presenter_core  # noqa: E402
 import recipe_core  # noqa: E402
 import sound_core  # noqa: E402
 import timeline_core  # noqa: E402
@@ -159,6 +169,7 @@ def copy_kit(project: Path) -> None:
     kit.mkdir(parents=True, exist_ok=True)
     for name in ("motion.js", "motion.css"):
         shutil.copy2(ASSETS / "kit" / name, kit / name)
+    shutil.copy2(ASSETS / "scenes" / "scenes.css", kit / "scenes.css")
     for folder in ("props", "paper", "fonts"):
         if (ASSETS / folder).exists():
             shutil.copytree(ASSETS / folder, kit / folder, dirs_exist_ok=True)
@@ -199,6 +210,8 @@ def synced(project: Path) -> tuple:
     html = load_text(project / "index.html") if (project / "index.html").exists() else ""
     problems = [] if html else [f"{project / 'index.html'} is missing"]
     problems += kit_core.validate_cues(doc, kit_core.html_ids(html))
+    problems += [f"{{{{{name}}}}} in {where}: a scene slot still to fill (index.html or cues.json)"
+                 for name, where in board_core.slots_left(html, doc)]
     brand = read_json(project / "brand.json", "brand") if (project / "brand.json").exists() else {}
     problems += kit_core.validate_brand(brand)
     words = None
@@ -862,6 +875,377 @@ def cmd_recipe_cues(a) -> None:
     log("recipe", f"{len(doc['cues'])} cues -> {Path(a.out).as_posix()}")
 
 
+# ---------------------------------------------------------------- board (the reel method)
+
+
+def scene_library() -> dict:
+    """{type: {html, slots, tone, cues}} from assets/scenes (custom has no file)."""
+    lib = read_json(ASSETS / "scenes" / "scenes.json", "scenes")
+    return {s["type"]: {"html": load_text(ASSETS / "scenes" / s["file"]) if s.get("file") else None, "slots": s["slots"],
+                        "tone": s["tone"], "cues": s["cues"]} for s in lib["scenes"]}
+
+
+def project_words(project: Path, name: str, what: str) -> list:
+    path = project / name
+    if not path.exists():
+        bad_input([f"{what}: {path} is missing; make it with kit.py voice (a script) or kit.py presenter (a talking clip)"])
+    words = read_json(path, what)
+    if isinstance(words, dict):
+        words = words.get("words", [])
+    if not isinstance(words, list) or not [w for w in words if isinstance(w, dict) and str(w.get("text", "")).strip()]:
+        bad_input([f"{what}: {path} has no words"])
+    return words
+
+
+def scene_types() -> set:
+    return {s["type"] for s in read_json(ASSETS / "scenes" / "scenes.json", "scenes")["scenes"]}
+
+
+def load_board(project: Path) -> dict:
+    board = read_json(project / "board.json", "board")
+    problems = board_core.validate(board, scene_types())
+    if problems:
+        bad_input(problems)
+    return board
+
+
+def cmd_board_new(a) -> None:
+    project = Path(a.project)
+    words = project_words(project, a.words, "words")
+    cues = read_json(project / "cues.json", "cues") if (project / "cues.json").exists() else {}
+    size = cues.get("size", [1080, 1920]) if isinstance(cues, dict) else [1080, 1920]
+    fps = cues.get("fps", 30) if isinstance(cues, dict) else 30
+    board = board_core.new_board(words, size, fps, a.texture)
+    board["words"] = a.words
+    write_json(project / "board.json", board)
+    lens = [b["to"] - b["from"] for b in board["beats"]]
+    log("board", f"{len(lens)} beats from {len(words)} words, {min(lens):.2f} to {max(lens):.2f} s -> board.json; "
+                 f"give each beat its scene, visual, elements (2 or more), keyword, tone and transition, then board check")
+
+
+def built_cues(project: Path, board: dict):
+    """cues.json's cues with word times resolved, once board build has written them; else None."""
+    path = project / "cues.json"
+    if not path.exists():
+        return None
+    doc = read_json(path, "cues")
+    cues = doc.get("cues") if isinstance(doc, dict) else None
+    ids = {b["id"] for b in board["beats"]}
+    if not isinstance(cues, list) or not any(isinstance(c, dict) and str(c.get("id", "")).split("-")[0] in ids for c in cues):
+        return None
+    if any(kit_core.word_timed(c) for c in cues) and isinstance(doc.get("words"), str) and (project / doc["words"]).exists():
+        words = read_json(project / doc["words"], "words")
+        cues, _ = kit_core.resolve_word_times(cues, words.get("words", []) if isinstance(words, dict) else words)
+    return cues
+
+
+def cmd_board_check(a) -> None:
+    project = Path(a.project)
+    board = load_board(project)
+    found = board_core.pace(board, built_cues(project, board))
+    todo = board_core.unfinished(board)
+    for line in todo:
+        print(f"problem: {line}")
+    for f in found:
+        label = "waived" if f["waived"] else "warning" if f["rule"] in board_core.WARN_ONLY else "breach"
+        print(f"{label}: {f['rule']}: {f['message']}" + (f" (because: {f['because']})" if f["waived"] else ""))
+    failing = board_core.failing(found)
+    log("board", f"{len(board['beats'])} beats: {len(failing)} breaches, {len(todo)} to finish, "
+                 f"{sum(f['waived'] for f in found)} waived")
+    if failing or todo:
+        raise SystemExit(2)
+
+
+STARTER = re.compile(r'\s*<h1 id="headline" class="om-title">Your headline, word by word</h1>')
+SCENES_CSS = '<link rel="stylesheet" href="kit/scenes.css" />'
+CAPTIONS = '<div id="captions" class="om-caption" data-style="reel"></div>'
+MAIN_END = re.compile(r"\n(\s*)</div>\s*\n\s*<script src=\"kit/motion\.js\"></script>")
+
+
+def before_main_end(html: str, fragment: str) -> str:
+    """The page with a fragment put last inside #main (exit 2 when the page has no kit #main)."""
+    m = MAIN_END.search(html)
+    if not m:
+        bad_input(["index.html: no #main followed by kit/motion.js (start the project with kit.py new)"])
+    return html[:m.start()] + fragment + html[m.start():]
+
+
+def page_with_scenes(html: str, sections: str) -> str:
+    """The page with the starter headline gone, the scene styles linked, and the sections then the captions at the
+    end of #main (the sections before #presenter when it is there, so the founder stands over the graphics)."""
+    html = STARTER.sub("", html)
+    if SCENES_CSS not in html:
+        html = html.replace('<link rel="stylesheet" href="brand.css" />', '<link rel="stylesheet" href="brand.css" />\n    ' + SCENES_CSS, 1)
+    block = "\n".join("      " + line if line else line for line in sections.rstrip("\n").split("\n"))
+    tag = re.search(r'\s*<video id="presenter"[^>]*>(</video>)?', html)
+    if tag:
+        html = html[:tag.start()] + "\n" + block + html[tag.start():]
+    return before_main_end(html, ("" if tag else "\n" + block) + "\n      " + CAPTIONS)
+
+
+def cmd_board_build(a) -> None:
+    project = Path(a.project)
+    board = load_board(project)
+    words = project_words(project, board.get("words", "words.json"), "words")
+    try:
+        sections, doc = board_core.skeleton(board, scene_library(), words)
+    except ValueError as e:
+        bad_input(str(e).split("; "))
+    html = load_text(project / "index.html") if (project / "index.html").exists() else ""
+    old = read_json(project / "cues.json", "cues") if (project / "cues.json").exists() else {}
+    old_cues = [c for c in (old.get("cues") or []) if not (c.get("id") == "headline" and c.get("part") == "words")] \
+        if isinstance(old, dict) else []
+    if not a.force and ('class="om-scene"' in html or old_cues):
+        bad_input(["board build: index.html already has scenes or cues.json has cues; run with --force "
+                   "(it keeps index.html.bak and cues.json.bak)"])
+    if a.force:
+        for name in ("index.html", "cues.json"):
+            if (project / name).exists():
+                shutil.copy2(project / name, project / (name + ".bak"))
+        html = re.sub(r'\s*<section id="[^"]+" class="om-scene".*?</section>', "", html, flags=re.S)
+        html = html.replace("\n      " + CAPTIONS, "")
+    page = page_with_scenes(html, sections)
+    ids = kit_core.html_ids(page)
+    if any(c["id"] == "presenter" for c in doc["cues"]) and "presenter" not in ids:
+        bad_input(["board build: beats place the presenter but index.html has no #presenter; run kit.py presenter first"])
+    problems = kit_core.validate_cues(board_core.with_placeholders(doc), ids)
+    if problems:
+        bad_input(problems)
+    if not (project / "kit" / "scenes.css").exists():
+        copy_kit(project)
+    save_text(project / "index.html", page)
+    write_json(project / "cues.json", doc)
+    todo = board_core.slots_left(page, doc)
+    for name, where in todo:
+        print(f"to fill: {{{{{name}}}}} in {where}")
+    log("board", f"{len(board['beats'])} scenes, {len(doc['cues'])} cues -> index.html, cues.json; "
+                 f"{len(todo)} slots to fill, then kit.py sync")
+
+
+SHEET_COLS, SHEET_ROWS = 4, 3
+TILE_W, TILE_H = 270, 480
+
+
+def sheet_page(tiles: list, n: int) -> str:
+    cells = "".join(
+        f'<figure><img src="{htmlmod.escape(t["frame"])}" /><figcaption><b>{htmlmod.escape(t["id"])}</b> '
+        f'{htmlmod.escape(t["scene"] or "?")} at {t["t"]:g} s<br />{htmlmod.escape(t["say"])}</figcaption></figure>'
+        for t in tiles)
+    return ("<!doctype html><html><head><meta charset=\"utf-8\" /><style>"
+            "body{margin:0;background:#151412;font:16px/1.3 system-ui,sans-serif;color:#F6F1E7}"
+            f"main{{display:grid;grid-template-columns:repeat({SHEET_COLS},{TILE_W}px);gap:12px;padding:12px}}"
+            f"figure{{margin:0;width:{TILE_W}px}}img{{display:block;width:{TILE_W}px;height:{TILE_H}px;object-fit:cover;background:#000}}"
+            "figcaption{height:62px;padding:6px 2px 0;overflow:hidden}b{color:#F2B53A}"
+            f"</style><title>beats {n}</title></head><body><main>{cells}</main></body></html>")
+
+
+def cmd_board_sheet(a) -> None:
+    import tempfile
+    project, video = Path(a.project), Path(a.video)
+    board = load_board(project)
+    if not video.exists():
+        bad_input([f"video: {video} is missing"])
+    seconds = media_seconds(video)
+    if seconds is None:
+        tool_failed("ffprobe", f"cannot read the length of {video}")
+    late = [b["id"] for b in board["beats"] if b["to"] > seconds + 0.05]
+    if late:
+        bad_input([f"video: {video} is {seconds:.2f} s; beats {', '.join(late)} run past its end (render the whole board)"])
+    ffmpeg = shutil.which("ffmpeg")
+    chrome = find_chrome()
+    if not ffmpeg or not chrome:
+        tool_failed("board sheet", f"needs ffmpeg ({plan()['install']['ffmpeg']}) and Chrome ({plan()['install']['chrome']})")
+    review = project / "review"
+    frames = review / "frames"
+    frames.mkdir(parents=True, exist_ok=True)
+    beats = {b["id"]: b for b in board["beats"]}
+    tiles = []
+    for bid, t in board_core.sheet_times(board):
+        out = frames / f"{bid}.png"
+        run([ffmpeg, "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1", "-vf", f"scale={TILE_W * 2}:-2", str(out)],
+            f"ffmpeg (frame of {bid})")
+        tiles.append({"id": bid, "t": t, "frame": f"frames/{bid}.png", "scene": beats[bid].get("scene", ""), "say": beats[bid].get("say", "")})
+    per = SHEET_COLS * SHEET_ROWS
+    width = SHEET_COLS * (TILE_W + 12) + 12
+    written = []
+    for k in range(0, len(tiles), per):
+        n = k // per + 1
+        page = review / f"beats-{n:02d}.html"
+        save_text(page, sheet_page(tiles[k:k + per], n))
+        rows = (min(per, len(tiles) - k) + SHEET_COLS - 1) // SHEET_COLS
+        out = review / f"beats-{n:02d}.png"
+        profile = tempfile.mkdtemp(prefix="motion-kit-chrome-")
+        try:
+            run(kit_core.shot_command(chrome, page.resolve().as_uri(), out.resolve(), width, rows * (TILE_H + 74) + 12, 1, profile),
+                "Chrome's screenshot")
+        finally:
+            shutil.rmtree(profile, ignore_errors=True)
+        written.append(out.as_posix())
+    log("board", f"{len(tiles)} beats -> {', '.join(written)}")
+
+
+# ---------------------------------------------------------------- pace (after the render)
+
+def cmd_pace(a) -> None:
+    video = Path(a.video)
+    if not video.exists():
+        bad_input([f"video: {video} is missing"])
+    beats = None
+    if a.board:
+        board = read_json(Path(a.board), "board")
+        problems = board_core.validate(board, scene_types())
+        if problems:
+            bad_input(problems)
+        beats = board["beats"]
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        tool_failed("ffmpeg", f"not found: {plan()['install']['ffmpeg']}")
+    seconds = media_seconds(video)
+    if seconds is None:
+        tool_failed("ffprobe", f"cannot read the length of {video}")
+    w, h = board_core.PACE_SIZE
+    done = subprocess.run([ffmpeg, "-v", "error", "-i", str(video), "-an", "-vf", f"fps={board_core.PACE_FPS},scale={w}:{h},format=gray",
+                           "-f", "rawvideo", "-"], capture_output=True)
+    if done.returncode != 0:
+        tool_failed("ffmpeg", "\n".join(done.stderr.decode("utf-8", "replace").strip().splitlines()[-8:]))
+    raw, n = done.stdout, w * h
+    frames = [raw[k:k + n] for k in range(0, len(raw) - n + 1, n)]
+    changes = board_core.change_times(frames, board_core.PACE_FPS, a.threshold)
+    report = board_core.pace_report(changes, seconds, beats, a.max_still)
+    report.update({"video": video.as_posix(), "duration": round(seconds, 3), "changes": changes, "max_still": a.max_still})
+    out = video.with_name("pace.json")
+    write_json(out, report)
+    print(f"shots {report['shots']}, average {report['avg_shot']:.2f} s, longest still {report['longest_still']:.2f} s")
+    for s_ in report["stills"]:
+        print(f"still: {s_['start']:g} to {s_['end']:g} s ({s_['dur']:g} s, over {a.max_still:g} s)")
+    for bid in report["quiet_beats"]:
+        print(f"quiet beat: {bid} (no visible change inside it)")
+    log("pace", f"{'ok' if report['ok'] else 'not ok'} -> {out.as_posix()}")
+    if not report["ok"]:
+        raise SystemExit(2)
+
+
+# ---------------------------------------------------------------- presenter (the founder cut out of their clip)
+
+PRESENTER_HTML = re.compile(r'<video id="presenter"')
+
+
+def cmd_presenter(a) -> None:
+    import tempfile
+    project, clip = Path(a.project), Path(a.clip)
+    problems = [] if clip.exists() else [f"clip: {clip} is missing"]
+    if not (project / "index.html").exists():
+        problems.append(f"{project / 'index.html'} is missing (start the project with kit.py new)")
+    try:
+        chosen = presenter_core.route(a.engine, sys.platform, macos_major() or 0, bool(shutil.which("swift")))
+    except ValueError as e:
+        problems.append(str(e))
+    if problems:
+        bad_input(problems)
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        tool_failed("ffmpeg", f"not found: {plan()['install']['ffmpeg']}")
+    out_webm, wav = (project / "presenter.webm").resolve(), (project / "voice.wav").resolve()
+    fps = 30.0
+    probe = shutil.which("ffprobe")
+    if probe and chosen == "vision":
+        done = subprocess.run([probe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=avg_frame_rate",
+                               "-of", "csv=p=0", str(clip)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        try:
+            num, _, den = done.stdout.strip().partition("/")
+            fps = float(num) / float(den or 1)
+        except (ValueError, ZeroDivisionError):
+            fps = 30.0
+    work = Path(tempfile.mkdtemp(prefix="motion-kit-presenter-"))
+    try:
+        steps = presenter_core.commands(chosen, clip.resolve(), work, out_webm, shutil.which("swift"), engine_command_line(),
+                                        ffmpeg, a.quality, fps)
+        for k, cmd in enumerate(steps):
+            name = ("Apple Vision (presenter.swift)" if k == 0 else "ffmpeg (VP9 with alpha)") if chosen == "vision" \
+                else "the render engine's remove-background"
+            done = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            if chosen == "vision" and k == 0 and done.returncode == 3:
+                bad_input([f"no person found in {clip}: use a clip with the founder on camera"])
+            if done.returncode != 0:
+                tail = "\n".join((done.stderr or done.stdout or "").strip().splitlines()[-8:])
+                tool_failed(name, f"exit {done.returncode}\n{tail}")
+            log("presenter", f"{name}: done")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    run(presenter_core.audio_command(ffmpeg, clip.resolve(), wav), "ffmpeg (the clip's voice)")
+    raw = project / "clip-words.json"
+    cmd = [sys.executable, str(EDIT / "transcribe.py"), str(wav), "--out", str(raw.resolve())]
+    if a.providers:
+        cmd += ["--providers", str(Path(a.providers).resolve())]
+    run(cmd, "video-edit's transcribe.py")
+    words = presenter_core.clip_words(read_json(raw, "transcript"))
+    write_json(project / "words.json", words)
+    html = load_text(project / "index.html")
+    if not PRESENTER_HTML.search(html):
+        tag = "\n      " + presenter_core.presenter_tag()
+        if CAPTIONS in html:  # built already: the founder goes under the captions
+            html = html.replace("\n      " + CAPTIONS, tag + "\n      " + CAPTIONS, 1)
+        else:
+            html = before_main_end(html, tag)
+        save_text(project / "index.html", html)
+    seconds = media_seconds(clip)
+    cues_path = project / "cues.json"
+    if seconds and cues_path.exists():
+        doc = read_json(cues_path, "cues")
+        fps_doc = doc.get("fps", 30) if isinstance(doc, dict) else 30
+        if isinstance(doc, dict) and kit_core._num(doc.get("duration")) and doc["duration"] < seconds:
+            import math
+            doc["duration"] = round(math.ceil(seconds * fps_doc - 1e-6) / fps_doc, 3)
+            write_json(cues_path, doc)
+            log("presenter", f"cues.json duration -> {doc['duration']:g} s (the clip's length)")
+    log("presenter", f"{chosen}: {clip.name} -> presenter.webm, voice.wav, words.json ({len(words)} words)")
+
+
+# ---------------------------------------------------------------- bed (the free music bed)
+
+
+def cmd_bed(a) -> None:
+    project = Path(a.project)
+    board_path = project / "board.json"
+    tones = None
+    if board_path.exists():
+        board = load_board(project)
+        duration = board["beats"][-1]["to"]
+        tones = [(b["from"], b["to"], b.get("tone", "light")) for b in board["beats"]]
+    elif (project / "cues.json").exists():
+        doc = read_json(project / "cues.json", "cues")
+        duration = doc.get("duration") if isinstance(doc, dict) else None
+    else:
+        duration = None
+    problems = [] if kit_core._num(duration) else [f"{project}: no board.json or cues.json with a duration"]
+    try:
+        bed = kit_core.bed_plan(duration if kit_core._num(duration) else 1.0, a.bpm, a.mood, tones)
+    except ValueError as e:
+        problems.append(str(e))
+    if problems:
+        bad_input(problems)
+    uv = shutil.which("uv")
+    if not uv:
+        tool_failed("uv", f"the bed runs bed.py with numpy through uv; install it: {plan()['install']['uv']}")
+    music = project / "music"
+    music.mkdir(parents=True, exist_ok=True)
+    write_json(music / "plan.json", bed)
+    out = music / "bed.wav"
+    run(kit_core.bed_command(uv, str(kit_core.BED_SCRIPT), str((music / "plan.json").resolve()), str(out.resolve())), "bed.py (through uv)")
+    seconds = wav_seconds(out)
+    if seconds is None:
+        tool_failed("bed.py", f"no WAV at {out}")
+    write_json(music / "music.json", {
+        "file": "bed.wav", "source": "Made on this computer from code: the motion kit's bed.py with plan.json (no samples, no downloads)",
+        "licence": "Own work, no third-party rights; free to use in posts and ads, no credit", "tempo_bpm": bed["bpm"],
+        "mood": a.mood, "length_s": round(seconds, 2),
+        "made": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+        "swap": "Put another track in music/ and pass it to kit.py sound --music (then kit.py beats --music for its beats)"})
+    write_json(project / "beats.json", kit_core.bed_beats(bed))
+    log("bed", f"{a.mood}, {bed['bpm']} bpm, {sum(s['bars'] for s in bed['sections'])} bars, {seconds:.1f} s -> "
+               f"music/bed.wav, music/music.json, beats.json")
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -962,6 +1346,41 @@ def main(argv=None) -> None:
     s.add_argument("recipe")
     s.add_argument("--out", required=True)
     s.set_defaults(fn=cmd_recipe_cues)
+    b = sub.add_parser("board", help="the reel's storyboard: one beat per spoken phrase").add_subparsers(dest="board_cmd", required=True)
+    s = b.add_parser("new", help="a board from the voice's words")
+    s.add_argument("project")
+    s.add_argument("--words", default="words.json")
+    s.add_argument("--texture", default="grid", choices=board_core.TEXTURES)
+    s.set_defaults(fn=cmd_board_new)
+    s = b.add_parser("check", help="the board's structure and pace rules")
+    s.add_argument("project")
+    s.set_defaults(fn=cmd_board_check)
+    s = b.add_parser("build", help="write the scenes into index.html and their cues into cues.json")
+    s.add_argument("project")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_board_build)
+    s = b.add_parser("sheet", help="one tile per beat from a render, for the review")
+    s.add_argument("project")
+    s.add_argument("--video", required=True)
+    s.set_defaults(fn=cmd_board_sheet)
+    s = sub.add_parser("pace", help="a render's shots, stills and quiet beats")
+    s.add_argument("video")
+    s.add_argument("--board")
+    s.add_argument("--max-still", type=float, default=2.5)
+    s.add_argument("--threshold", type=float, default=board_core.CHANGE_MIN)
+    s.set_defaults(fn=cmd_pace)
+    s = sub.add_parser("presenter", help="cut the founder out of their own talking clip -> presenter.webm, voice.wav, words.json")
+    s.add_argument("project")
+    s.add_argument("--clip", required=True)
+    s.add_argument("--engine", choices=presenter_core.ROUTES)
+    s.add_argument("--quality", default="balanced", choices=presenter_core.VISION_QUALITIES)
+    s.add_argument("--providers", help="video-edit's providers.json, for another free recognizer")
+    s.set_defaults(fn=cmd_presenter)
+    s = sub.add_parser("bed", help="a free music bed made on this computer -> music/bed.wav and beats.json")
+    s.add_argument("project")
+    s.add_argument("--bpm", type=int)
+    s.add_argument("--mood", default="drive")
+    s.set_defaults(fn=cmd_bed)
     a = ap.parse_args(argv)
     a.fn(a)
 
