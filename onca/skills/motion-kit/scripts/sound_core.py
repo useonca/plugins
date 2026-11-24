@@ -50,6 +50,8 @@ def _default_hits(c: dict) -> list:
         return {"cut": [], "whip": [(0, "whoosh")]}.get(p.get("kind", "slide"), [(0, "whoosh-short")])
     if part == "type":
         return [(0, "typing")]
+    if part == "device3d":
+        return [(0, "whoosh-short")] if p.get("move", "turn-in") in ("push-in", "rise") else []
     return []
 
 

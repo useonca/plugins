@@ -22,9 +22,12 @@ import core as edit_core  # noqa: E402  (video-edit's pure core: caption groups,
 
 VERSION = 1
 PARTS = ("words", "highlight", "captions", "odometer", "card-grid", "pop", "drop", "move", "chart", "focus",
-         "spotlight", "bubble", "morph", "scene", "draw", "tilt", "type", "drift")
+         "spotlight", "bubble", "morph", "scene", "draw", "tilt", "type", "drift", "device3d")
 SCENE_KINDS = ("cut", "slide", "whip", "tear", "focus", "zoom", "fade")
 SCENE_FROM = ("left", "right", "up", "down")
+DEVICES = ("phone", "laptop")
+MAX_DEVICES = 12
+DEVICE_MOVES = ("turn-in", "orbit", "push-in", "tilt-reveal", "rise")
 SFX = ("whoosh", "whoosh-short", "pop", "tick", "key", "typing", "sent", "received", "notification", "tap",
        "riser", "impact")
 # Default lengths (seconds) of the parts whose sound depends on their length; motion.js holds the same numbers.
@@ -52,21 +55,28 @@ SIMPLE_SELECTOR = re.compile(r"(\.[A-Za-z][\w-]*|[a-z][a-z0-9]*)")
 
 
 class _Ids(HTMLParser):
+    """Every element that has an id: its tag and attributes, by id."""
+
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.ids: set = set()
+        self.found: dict = {}
 
     def handle_starttag(self, tag, attrs):
-        for k, v in attrs:
-            if k == "id" and v:
-                self.ids.add(v)
+        a = dict(attrs)
+        if a.get("id"):
+            self.found[a["id"]] = (tag, a)
+
+
+def html_elements(html: str) -> dict:
+    """{id: (tag, attributes)} for every element with an id."""
+    p = _Ids()
+    p.feed(html)
+    return p.found
 
 
 def html_ids(html: str) -> set:
     """Every element id in the page."""
-    p = _Ids()
-    p.feed(html)
-    return p.ids
+    return set(html_elements(html))
 
 
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
@@ -229,6 +239,8 @@ def _param_problems(where: str, c: dict) -> list:
         for side in ("from", "to"):
             if side in p and not isinstance(p[side], dict):
                 out.append(f"{where}: params.{side} must be an object of x, y, scale, rotate, opacity, blur, w, h")
+    if part == "device3d":
+        out += _device_problems(where, p)
     if part == "captions":
         out += _caption_problems(where, p)
     if part == "pop" and p.get("each") and not SIMPLE_SELECTOR.fullmatch(str(p["each"])):
@@ -244,6 +256,74 @@ def _param_problems(where: str, c: dict) -> list:
             if not all(_num(a) for a in ats) or ats != sorted(ats):
                 out.append(f"{where}: each morph state needs an at, in time order")
     return out
+
+
+def _device_problems(where: str, p: dict) -> list:
+    out = []
+    for key, choices, label in (("device", DEVICES, "phone or laptop"), ("move", DEVICE_MOVES, "one of " + ", ".join(DEVICE_MOVES))):
+        value = p.get(key)
+        if value is not None and value not in choices and not (isinstance(value, str) and value.startswith("{{")):
+            out.append(f"{where}: params.{key} must be {label}, got {value!r}")
+    for side in ("from", "to"):
+        if side in p and p[side] is not None and not (isinstance(p[side], dict) and all(_num(v) for v in p[side].values())):
+            out.append(f"{where}: params.{side} must be an object of yaw, pitch, roll, zoom, x, y, open (numbers)")
+    return out
+
+
+def device_problems(doc: dict, html: str, exists) -> list:
+    """Each device3d cue's screen source checked against the project: its element must be a <canvas data-device>
+    with a data-shot image that exists, or a data-frames folder holding 0001.jpg (`exists(path)` says whether a
+    project path is there). A source still a {{slot}} is skipped (sync reports it)."""
+    found = html_elements(html)
+    out = []
+    devices = [c for c in doc.get("cues") or [] if isinstance(c, dict) and c.get("part") == "device3d"]
+    if len(devices) > MAX_DEVICES:  # each device canvas holds a WebGL context; a browser keeps about 16 alive
+        out.append(f"{len(devices)} device3d cues; at most {MAX_DEVICES} (a browser keeps about 16 WebGL contexts alive)")
+    for k, c in enumerate(doc.get("cues") or []):
+        if not isinstance(c, dict) or c.get("part") != "device3d":
+            continue
+        where = f"cues[{k}] ({c.get('id', '?')})"
+        tag, a = found.get(c.get("id"), (None, {}))
+        if tag is None:
+            continue  # validate_cues reports the missing element
+        if tag != "canvas" or "data-device" not in a:
+            out.append(f"{where}: a device3d cue needs a <canvas data-device=\"phone|laptop\"> element")
+            continue
+        shot, frames = a.get("data-shot"), a.get("data-frames")
+        if shot:  # the shell reads data-shot first and ignores data-frames then
+            if "{{" not in shot and not exists(shot):
+                out.append(f"{where}: shot '{shot}' not found")
+        elif frames:
+            if "{{" not in frames and not exists(frames.rstrip("/") + "/0001.jpg"):
+                out.append(f"{where}: frames '{frames}' has no 0001.jpg (kit.py frames SRC --out {frames})")
+        else:
+            out.append(f"{where}: the canvas needs data-shot (an image) or data-frames (a folder from kit.py frames)")
+    return out
+
+
+def frames_command(ffmpeg: str, src, out_dir, fps: float, max_width: int) -> list:
+    """ffmpeg's command that turns a screen recording into numbered JPEGs (0001.jpg ...) at fps, no wider than max_width."""
+    return [ffmpeg, "-v", "error", "-y", "-i", str(src), "-vf", f"fps={fps:g},scale='min({max_width},iw)':-2",
+            "-q:v", "3", str(Path(out_dir) / "%04d.jpg")]
+
+
+def jpeg_size(data: bytes) -> tuple:
+    """(width, height) of a JPEG, read from its first start-of-frame marker; ValueError when it is not one."""
+    if data[:2] != b"\xff\xd8":
+        raise ValueError("not a JPEG")
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2):
+            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7 or marker == 0xFF:
+            i += 1 if marker == 0xFF else 2
+            continue
+        i += 2 + int.from_bytes(data[i + 2:i + 4], "big")
+    raise ValueError("no frame header")
 
 
 def _caption_problems(where: str, p: dict) -> list:

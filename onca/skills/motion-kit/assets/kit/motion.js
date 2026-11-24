@@ -719,6 +719,50 @@
     },
   };
 
+  /* A phone or laptop in 3D (drawn by device3d.js into a canvas): a camera move over time. The state is the pose
+   * (degrees; zoom 1 = the whole device in the safe box; x, y in device heights; open = the laptop lid, 0 to 1; t = seconds
+   * since the cue, for a screen recording). */
+  const DEVICE_BASE = { yaw: 0, pitch: 0, roll: 0, zoom: 1, x: 0, y: 0, open: 1 };
+  const row = (dur, easeName, from, to) => ({ dur, ease: easeName, from: Object.assign({}, DEVICE_BASE, from), to: Object.assign({}, DEVICE_BASE, to) });
+  const DEVICE_MOVES = {
+    "turn-in": () => row(3.0, "inOutCubic", { yaw: -55, pitch: 8, roll: -4, zoom: 0.8 }, { yaw: -12 }),
+    orbit: () => row(6.0, "linear", { yaw: -25, pitch: 4, zoom: 0.9 }, { yaw: 25, pitch: 4, zoom: 0.9 }),
+    "push-in": (d) => row(2.4, "inOutCubic", { yaw: -10, zoom: 0.85 }, { zoom: 2.2, y: d === "laptop" ? 0.12 : 0 }),
+    "tilt-reveal": () => row(2.4, "outQuint", { yaw: -20, pitch: -40, zoom: 0.95, y: -0.6 }, { yaw: -10, pitch: 6, zoom: 0.95 }),
+    rise: (d) => d === "laptop"
+      ? row(3.0, "outCubic", { yaw: -30, pitch: 20, zoom: 0.85, open: 0 }, { yaw: -15, pitch: 6 })
+      : row(3.0, "outCubic", { yaw: -35, zoom: 0.9, y: -1.2 }, { yaw: -12 }),
+  };
+  const deviceRow = (params) => (DEVICE_MOVES[params.move] || DEVICE_MOVES["turn-in"])(params.device);
+  /* The camera and the devices' front sizes (world units); device3d.js builds to these and draws from them. */
+  const deviceSpec = { fov: 28, dist: 7, sizes: { phone: { w: 0.715, h: 1.46 }, laptop: { w: 2.5, h: 1.8 } },  // the laptop box holds its base seen from above and the turn
+                       safe: { portrait: [820 / 1080, 1220 / 1920], landscape: [0.7, 0.7] }, slack: 0.92,
+                       lift: { portrait: 130 / 1920, landscape: 0 } };  // the share of the frame's height the picture moves up: the 9:16 safe box centres on y 830, not 960
+  /* The zoom that keeps the device in the safe box (9:16: x 120-940, y 220-1440; 16:9 the middle 70 percent). */
+  function deviceFit(aspect, device, safe) {  // safe: [share of the width, share of the height] to override the default box
+    const size = deviceSpec.sizes[device] || deviceSpec.sizes.phone;
+    const [sw, sh] = safe || (aspect < 1 ? deviceSpec.safe.portrait : deviceSpec.safe.landscape);
+    const h0 = 2 * deviceSpec.dist * Math.tan((deviceSpec.fov * Math.PI) / 360);
+    return r3(deviceSpec.slack * Math.min((sw * h0 * aspect) / size.w, (sh * h0) / size.h));
+  }
+  parts.device3d = {
+    defaults: { device: "phone", move: "turn-in", from: null, to: null, ease: null },
+    dur: (p) => deviceRow(p).dur,
+    state(params, t, dur) {
+      const m = deviceRow(params);
+      const e = (ease[params.ease] || ease[m.ease])(progress(t, 0, dur));
+      const a = Object.assign({}, m.from, params.from);
+      const b = Object.assign({}, m.to, params.to);
+      const out = {};
+      Object.keys(DEVICE_BASE).forEach((k) => (out[k] = r3(lerp(a[k], b[k], e))));
+      out.t = Math.max(0, r3(t));  // the screen recording's clock: it keeps playing after the move ends
+      return out;
+    },
+    apply(el, st) {
+      if (typeof window !== "undefined" && window.OncaDevice3D) window.OncaDevice3D.draw(st, el);
+    },
+  };
+
   /* A scene change on the incoming scene (a full-frame element above the outgoing one): a hard cut, a paper
    * slide, a fast whip (the engine's motion blur smears it) or a tear that reveals it behind a torn edge; with
    * `out`, the outgoing scene is hidden once the change is over. */
@@ -838,6 +882,7 @@
       case "morph": return (p.states || []).slice(1).map((s) => [s.at, "whoosh-short"]);
       case "scene": return p.kind === "cut" ? [] : [[0, p.kind === "whip" ? "whoosh" : "whoosh-short"]];
       case "type": return [[0, "typing"]];
+      case "device3d": return p.move === "push-in" || p.move === "rise" ? [[0, "whoosh-short"]] : [];
       default: return [];
     }
   }
@@ -920,5 +965,6 @@
     else start();
   }
 
-  return { ease, spring, progress, rand, tornPath, parts, seek, events, paramsOf, durOf, formatNumber, markCover, applyOut };
+  const deviceMoves = () => Object.keys(DEVICE_MOVES);
+  return { ease, spring, progress, rand, tornPath, parts, seek, events, paramsOf, durOf, formatNumber, markCover, applyOut, deviceMoves, deviceFit, deviceSpec };
 });

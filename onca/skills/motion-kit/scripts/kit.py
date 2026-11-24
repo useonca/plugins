@@ -167,8 +167,9 @@ PAGE = """<!doctype html>
 def copy_kit(project: Path) -> None:
     kit = project / "kit"
     kit.mkdir(parents=True, exist_ok=True)
-    for name in ("motion.js", "motion.css"):
+    for name in ("motion.js", "motion.css", "device3d.js"):
         shutil.copy2(ASSETS / "kit" / name, kit / name)
+    shutil.copytree(ASSETS / "kit" / "lib", kit / "lib", dirs_exist_ok=True)
     shutil.copy2(ASSETS / "scenes" / "scenes.css", kit / "scenes.css")
     for folder in ("props", "paper", "fonts"):
         if (ASSETS / folder).exists():
@@ -333,6 +334,11 @@ def find_fonts(project: Path, families: list, extra: list) -> dict:
 
 def cmd_check(a) -> None:
     project = Path(a.project).resolve()
+    doc = project_cues(project)
+    if isinstance(doc, dict) and doc and (project / "index.html").exists():
+        bad = kit_core.device_problems(doc, load_text(project / "index.html"), lambda rel: (project / rel).exists())
+        if bad:
+            bad_input(bad)
     done = subprocess.run(engine_command_line() + ["check", "--json"], cwd=project, capture_output=True, text=True,
                           encoding="utf-8", errors="replace")
     text = done.stdout or ""
@@ -350,6 +356,36 @@ def cmd_check(a) -> None:
                  f"{len(summary['expected'])} expected -> {(project / 'check.json').as_posix()}")
     if summary["errors"]:
         raise SystemExit(1)
+
+
+# ---------------------------------------------------------------- frames
+
+
+def cmd_frames(a) -> None:
+    """A screen recording as numbered JPEGs for the device scene's data-frames folder."""
+    src, out = Path(a.src), Path(a.out)
+    if not src.is_file():
+        bad_input([f"frames: {src} is not a file"])
+    if a.fps <= 0 or a.max_width < 16:
+        bad_input(["frames: --fps must be over 0 and --max-width at least 16"])
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        tool_failed("ffmpeg", f"not found: {plan()['install']['ffmpeg']}")
+    out.mkdir(parents=True, exist_ok=True)
+    for old in out.glob("[0-9][0-9][0-9][0-9].jpg"):
+        old.unlink()
+    done = subprocess.run(kit_core.frames_command(ffmpeg, src, out, a.fps, a.max_width), capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
+    made = sorted(out.glob("[0-9][0-9][0-9][0-9].jpg"))
+    if done.returncode != 0 or not made:
+        tail = "\n".join((done.stderr or "").strip().splitlines()[-4:]) or "no frames came out"
+        bad_input([f"frames: ffmpeg could not read {src.name}: {tail}"])
+    width = kit_core.jpeg_size(made[0].read_bytes())[0]
+    print(f"frames {len(made)} width {width}")
+    if len(made) > 12 * a.fps:
+        log("frames", f"warning: {len(made)} frames; every frame loads before the first draw, so keep a recording under 12 s")
+    log("frames", f"{src.name} -> {len(made)} frames at {a.fps:g} fps, {width} px wide in {out.as_posix()}; "
+                  f'put data-frames="{out.name}" data-fps="{a.fps:g}" on the device canvas')
 
 
 # ---------------------------------------------------------------- shot
@@ -970,6 +1006,9 @@ def before_main_end(html: str, fragment: str) -> str:
     return html[:m.start()] + fragment + html[m.start():]
 
 
+DEVICE_SCRIPT = '<script type="module" src="kit/device3d.js"></script>'
+
+
 def page_with_scenes(html: str, sections: str) -> str:
     """The page with the starter headline gone, the scene styles linked, and the sections then the captions at the
     end of #main (the sections before #presenter when it is there, so the founder stands over the graphics)."""
@@ -980,7 +1019,11 @@ def page_with_scenes(html: str, sections: str) -> str:
     tag = re.search(r'\s*<video id="presenter"[^>]*>(</video>)?', html)
     if tag:
         html = html[:tag.start()] + "\n" + block + html[tag.start():]
-    return before_main_end(html, ("" if tag else "\n" + block) + "\n      " + CAPTIONS)
+    html = before_main_end(html, ("" if tag else "\n" + block) + "\n      " + CAPTIONS)
+    if "data-device=" in sections and DEVICE_SCRIPT not in html:  # the 3D shell loads only for a page that has a device
+        motion = '<script src="kit/motion.js"></script>'  # before_main_end has already required this exact tag
+        html = html.replace(motion, motion + "\n    " + DEVICE_SCRIPT, 1)
+    return html
 
 
 def cmd_board_build(a) -> None:
@@ -1269,6 +1312,12 @@ def main(argv=None) -> None:
     s = sub.add_parser("check", help="the render engine's check, with the findings the kit expects set apart")
     s.add_argument("project")
     s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("frames", help="a screen recording as numbered JPEGs for the device scene")
+    s.add_argument("src")
+    s.add_argument("--out", required=True)
+    s.add_argument("--fps", type=float, default=15)
+    s.add_argument("--max-width", type=int, default=1170)
+    s.set_defaults(fn=cmd_frames)
     s = sub.add_parser("shot", help="a crisp screenshot of an HTML page or card at 3x, trimmed")
     s.add_argument("page")
     s.add_argument("out")

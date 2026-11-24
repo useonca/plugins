@@ -41,6 +41,15 @@
 .om-s-badge { position: absolute; right: 40px; top: 120px; padding: 16px 30px; border-radius: 999px; font-weight: 800; font-size: 40px;
   background: var(--om-accent); color: var(--om-accent-ink); box-shadow: 0 14px 30px rgba(0,0,0,.2); }
 
+/* device: the product on a 3D phone or laptop (one full-frame canvas, drawn by kit/device3d.js, the device kept to the hero box
+ * y 440-1440 by its data-safe and data-lift; the shadow and the camera move are inside it) */
+.om-s-device { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* the badge keeps inside the 9:16 safe box (right edge 890) and above the device's top */
+.om-s-device ~ .om-hero .om-s-badge { right: 100px; top: 30px; }
+.om-scene[data-presenter="bottom"] .om-s-device { transform: translateY(-40px) scale(0.64); transform-origin: 50% 440px; }
+.om-scene[data-presenter="corner"] .om-s-device { transform: translateX(-90px) scale(0.84); transform-origin: 50% 440px; }
+.om-scene[data-presenter="full"] .om-s-device { opacity: 0; }
+
 /* terminal: a prompt typed, the answer popping in */
 .om-s-term { width: 900px; border-radius: 26px; background: #0E0E0D; color: #EDE9E0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 38px; line-height: 1.4; overflow: hidden; }
 .om-s-tbar { height: 56px; display: flex; gap: 12px; align-items: center; padding: 0 24px; background: #1C1B19; }

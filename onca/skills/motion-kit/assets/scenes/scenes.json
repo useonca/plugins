@@ -121,6 +121,35 @@
    ]
   },
   {
+   "type": "device",
+   "file": "device.html",
+   "slots": [
+    "shot",
+    "device",
+    "move"
+   ],
+   "tone": "any",
+   "cues": [
+    {
+     "id": "@-device",
+     "part": "device3d",
+     "at": 0,
+     "params": {
+      "device": "{{device}}",
+      "move": "{{move}}"
+     }
+    },
+    {
+     "id": "@-badge",
+     "part": "pop",
+     "at": 0.5,
+     "params": {
+      "rotate": -4
+     }
+    }
+   ]
+  },
+  {
    "type": "terminal",
    "file": "terminal.html",
    "slots": [
