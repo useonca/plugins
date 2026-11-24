@@ -162,7 +162,27 @@
     },
   };
 
-  /* An accent box (with corner handles), an ellipse drawn round, or a marker swipe. */
+  /* An accent box (with corner handles), an ellipse drawn round, or a marker swipe.
+   * On an empty element the element is the mark. On an element with content (text, a card, a picture) the part
+   * leaves the element alone and draws the mark as its own child over the same area, so the content stays visible. */
+  const hasContent = (el) => ((el.textContent || "").trim() !== "") || (el.children && el.children.length > 0) || /^(img|video|canvas|picture|svg)$/i.test(el.tagName || "");
+  function markOf(el, params) {
+    let host = el.getAttribute("data-om-host");
+    if (host === null) {
+      host = hasContent(el) ? "1" : "0";
+      el.setAttribute("data-om-host", host);
+    }
+    if (host !== "1") return el;
+    let mark = el.querySelector(".om-mark");
+    if (!mark) {
+      mark = (el.ownerDocument || document).createElement("i");
+      mark.className = "om-mark";
+      el.appendChild(mark);
+      if (typeof getComputedStyle === "function" && getComputedStyle(el).position === "static") el.style.position = "relative";
+    }
+    mark.style.inset = -params.pad + "px";
+    return mark;
+  }
   parts.highlight = {
     defaults: { style: "box", pad: 12, draw: 0.35, handles: true },
     dur: (p) => p.draw + 0.6,
@@ -174,27 +194,28 @@
       return { draw, opacity: t >= 0 ? 1 : 0, handles };
     },
     apply(el, st, params) {
-      once(el, "highlight:" + params.style, () => {
-        el.classList.add("om-highlight");
-        el.setAttribute("data-style", params.style);
-        el.setAttribute("data-layout-allow-occlusion", "");  // it sits over its words on purpose
+      const mark = markOf(el, params);
+      once(mark, "highlight:" + params.style, () => {
+        mark.classList.add("om-highlight");
+        mark.setAttribute("data-style", params.style);
+        mark.setAttribute("data-layout-allow-occlusion", "");  // it sits over its words on purpose
         if (params.style === "ellipse") {
-          el.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse cx="50" cy="50" rx="48" ry="44"/></svg>';
+          mark.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse cx="50" cy="50" rx="48" ry="44"/></svg>';
         } else if (params.style === "box" && params.handles) {
-          el.innerHTML = '<i class="om-handle"></i><i class="om-handle"></i><i class="om-handle"></i><i class="om-handle"></i>';
+          mark.innerHTML = '<i class="om-handle"></i><i class="om-handle"></i><i class="om-handle"></i><i class="om-handle"></i>';
         }
       });
-      el.style.opacity = String(st.opacity);
-      el.style.setProperty("--om-pad", params.pad + "px");
+      mark.style.opacity = String(st.opacity);
+      mark.style.setProperty("--om-pad", params.pad + "px");
       if (params.style === "ellipse") {
         const mask = `conic-gradient(from -100deg, #000 ${r3(st.draw * 360)}deg, transparent 0)`;
-        el.style.webkitMaskImage = mask;
-        el.style.maskImage = mask;
-        el.style.clipPath = "none";
+        mark.style.webkitMaskImage = mask;
+        mark.style.maskImage = mask;
+        mark.style.clipPath = "none";
       } else {
-        el.style.clipPath = `inset(0 ${r3((1 - st.draw) * 100)}% 0 0)`;
+        mark.style.clipPath = `inset(0 ${r3((1 - st.draw) * 100)}% 0 0)`;
       }
-      el.querySelectorAll(".om-handle").forEach((h, i) => (h.style.transform = `scale(${st.handles[i]})`));
+      mark.querySelectorAll(".om-handle").forEach((h, i) => (h.style.transform = `scale(${st.handles[i]})`));
     },
   };
 

@@ -10,8 +10,9 @@
 .om-scene[data-presenter="full"] .om-hero { opacity: 0; }
 
 /* headline */
-.om-s-wrap { position: relative; display: inline-block; max-width: 900px; }
-.om-s-title { margin: 0; font-family: var(--om-display); font-size: 112px; line-height: 1.02; letter-spacing: -0.03em; text-align: center; color: var(--om-ink); }
+/* the wrap plus its mark box (28 px a side) stays inside the 9:16 safe box (centred on x 540, so within 400 px a side: right edge 940) */
+.om-s-wrap { position: relative; display: inline-block; max-width: 744px; }
+.om-s-title { margin: 0; font-family: var(--om-display); font-size: 96px; line-height: 1.02; letter-spacing: -0.03em; text-align: center; text-wrap: balance; overflow-wrap: break-word; color: var(--om-ink); }
 .om-s-markbox { position: absolute; inset: -22px -28px; }
 
 /* metaphor: a drawn picture and the pieces that act it out */
